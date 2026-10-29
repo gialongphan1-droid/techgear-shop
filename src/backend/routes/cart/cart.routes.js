@@ -7,7 +7,7 @@ import { validateAddCartItem, validateDeleteCartItem, validateUpdateCartItem } f
 
 const router = Router();
 
-router.use(cartRateLimiter);
+router.use("/cart", cartRateLimiter);
 
 router.get("/cart", getCart);
 router.post("/cart/items", checkOrigin, requireCsrf, validateAddCartItem, addCartItem);
