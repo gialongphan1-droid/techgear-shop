@@ -28,6 +28,7 @@ export async function uploadAdminImage(file) {
       {
         folder,
         resource_type: "image",
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
         transformation: [
           {
             width: 1600,
