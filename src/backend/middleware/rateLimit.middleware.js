@@ -103,3 +103,18 @@ export const adminOrderStatusRateLimiter = rateLimit({
     errors: [],
   },
 });
+
+export const adminUploadRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) =>
+    req.admin?.id ? `admin:${req.admin.id}` : (req.ip || "unknown"),
+  message: {
+    success: false,
+    message: "Bạn đã upload ảnh quá nhiều lần, vui lòng thử lại sau.",
+    data: {},
+    errors: [],
+  },
+});

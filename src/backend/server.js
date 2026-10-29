@@ -15,6 +15,8 @@ import cartRoutes from "./routes/cart/cart.routes.js";
 import orderRoutes from "./routes/orders/order.routes.js";
 import adminInventoryRoutes from "./routes/adminInventory.routes.js";
 import adminOrderRoutes from "./routes/adminOrder.routes.js";
+import adminDashboardRoutes from "./routes/adminDashboard.routes.js";
+import adminUploadRoutes from "./routes/adminUpload.routes.js";
 import { configureCloudinary } from "./config/cloudinary.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +74,8 @@ app.use("/api/admin", adminProductRoutes);
 app.use("/api/admin", adminCategoryBannerRoutes);
 app.use("/api/admin", adminInventoryRoutes);
 app.use("/api/admin", adminOrderRoutes);
+app.use("/api/admin", adminDashboardRoutes);
+app.use("/api/admin", adminUploadRoutes);
 app.use("/api", cartRoutes);
 app.use("/api", orderRoutes);
 app.use("/api", publicRoutes);

@@ -6,6 +6,7 @@ Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện đ�
 
 - **Base URL:** `http://localhost:5000/api`
 - **Cơ chế xác thực:** JWT lưu trong Cookie HTTP-only (Tên cookie: `admin_token`).
+- **Cloudinary Upload:** Bổ sung `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` và `CLOUDINARY_UPLOAD_FOLDER=techgear/uploads` trong `src/backend/.env`.
 - **Bảo mật CSRF:** Mọi request ghi (POST, PUT, PATCH, DELETE) yêu cầu Header `x-csrf-token`. (Lấy mã này từ response của API Đăng nhập).
 - **Bắt buộc Header:** `Origin: http://localhost:5173` (để vượt qua CORS).
 - **Định dạng Response chung:**
@@ -62,6 +63,16 @@ Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện đ�
 - `POST /api/admin/inventory/adjust`: Điều chỉnh tồn kho (ghi log InventoryLog).
 - `GET /api/admin/orders`: Danh sách đơn hàng.
 - `PATCH /api/admin/orders/:id/status`: Cập nhật trạng thái đơn (tự động hoàn kho nếu hủy).
+
+### 3.7. API Dashboard & Upload ảnh (Admin)
+
+- `GET /api/admin/dashboard`: Lấy thống kê Dashboard (yêu cầu quyền Admin).
+  - Trả về `totalProducts`, `totalCategories`, `pendingOrders`, `completedOrders` và `totalRevenue`.
+  - Doanh thu chỉ tính các đơn có trạng thái `COMPLETED`.
+- `POST /api/admin/upload`: Upload ảnh bằng `multipart/form-data` (yêu cầu quyền Admin, Origin và CSRF token).
+  - Field được hỗ trợ: `image` hoặc `file`.
+  - Chỉ hỗ trợ JPEG, PNG, WEBP hoặc GIF, dung lượng tối đa 5MB.
+  - Trả về `{ url, publicId }` để Frontend lưu vào dữ liệu sản phẩm/banner.
 
 ---
 
