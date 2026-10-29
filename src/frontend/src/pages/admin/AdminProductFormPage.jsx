@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   createAdminProduct,
   getAdminCategories,
   getAdminProduct,
+  uploadAdminImage,
   updateAdminProduct,
 } from "../../services/adminApi.js";
 
@@ -33,6 +34,8 @@ export default function AdminProductFormPage() {
     reset,
     watch,
     setError,
+    setValue,
+    clearErrors,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -46,7 +49,7 @@ export default function AdminProductFormPage() {
       stock: 0,
       status: "ACTIVE",
       warranty: "",
-      images: [{ url: "", isPrimary: true, publicId: "manual/product-image" }],
+      images: [],
       specs: [],
       seoTitle: "",
       seoDescription: "",
@@ -55,12 +58,10 @@ export default function AdminProductFormPage() {
   });
   const {
     fields: imageFields,
-    append: appendImage,
     remove: removeImage,
   } = useFieldArray({
     control,
     name: "images",
-    rules: { validate: (images) => images.length > 0 || "Cần ít nhất một ảnh." },
   });
   const {
     fields: specFields,
@@ -68,10 +69,30 @@ export default function AdminProductFormPage() {
     remove: removeSpec,
   } = useFieldArray({ control, name: "specs" });
   const listPrice = watch("listPrice");
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [fileError, setFileError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const selectedFilesRef = useRef(selectedFiles);
+  selectedFilesRef.current = selectedFiles;
+  const imageValues = watch("images") || [];
+
+  useEffect(
+    () => () => {
+      selectedFilesRef.current.forEach((selection) =>
+        URL.revokeObjectURL(selection.preview),
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     let active = true;
     setStatus("loading");
+    setFileError("");
+    setSelectedFiles((current) => {
+      current.forEach((selection) => URL.revokeObjectURL(selection.preview));
+      return [];
+    });
 
     const requests = [
       getAdminCategories({ limit: 100 }),
@@ -94,7 +115,7 @@ export default function AdminProductFormPage() {
                 ...image,
                 isPrimary: image.isPrimary || index === 0,
               }))
-            : [{ url: "", isPrimary: true, publicId: "manual/product-image" }];
+            : [];
           reset({
             name: product.name || "",
             slug: product.slug || "",
@@ -127,64 +148,130 @@ export default function AdminProductFormPage() {
     };
   }, [id, isEditing, reset]);
 
+  const handleFileSelection = (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    const allowedTypes = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ]);
+    const validFiles = [];
+    const invalidFiles = [];
+
+    files.forEach((file) => {
+      if (!allowedTypes.has(file.type)) {
+        invalidFiles.push(`${file.name}: định dạng không được hỗ trợ.`);
+      } else if (file.size > 5 * 1024 * 1024) {
+        invalidFiles.push(`${file.name}: dung lượng vượt quá 5MB.`);
+      } else if (file.size === 0) {
+        invalidFiles.push(`${file.name}: file ảnh đang trống.`);
+      } else {
+        validFiles.push({ file, preview: URL.createObjectURL(file) });
+      }
+    });
+
+    if (invalidFiles.length) {
+      setFileError(invalidFiles.join(" "));
+    } else {
+      setFileError("");
+    }
+    if (validFiles.length) {
+      clearErrors("images");
+      setSelectedFiles((current) => [...current, ...validFiles]);
+    }
+  };
+
+  const removeSelectedFile = (index) => {
+    setSelectedFiles((current) => {
+      const selection = current[index];
+      if (selection) URL.revokeObjectURL(selection.preview);
+      return current.filter((_, fileIndex) => fileIndex !== index);
+    });
+  };
+
   const onSubmit = async (values) => {
     setServerError("");
 
-    const images = values.images
-      .filter((image) => image.url.trim() && image.publicId.trim())
-      .map((image) => ({
-        url: image.url.trim(),
-        publicId: image.publicId.trim(),
-        isPrimary: Boolean(image.isPrimary),
-      }));
+    let hasPrimaryImage = false;
+    const images = (values.images || [])
+      .filter((image) => image.url?.trim() && image.publicId?.trim())
+      .map((image) => {
+        const isPrimary = Boolean(image.isPrimary && !hasPrimaryImage);
+        hasPrimaryImage = hasPrimaryImage || isPrimary;
+        return {
+          url: image.url.trim(),
+          publicId: image.publicId.trim(),
+          isPrimary,
+        };
+      });
 
-    if (!images.length) {
+    if (!images.length && !selectedFiles.length) {
       setError("images", { message: "Cần ít nhất một ảnh hợp lệ." });
       return;
     }
 
-    if (!images.some((image) => image.isPrimary)) {
-      images[0].isPrimary = true;
-    }
-
-    const productData = {
-      name: values.name.trim(),
-      categoryId: values.categoryId,
-      brand: values.brand.trim(),
-      listPrice: Number(values.listPrice),
-      salePrice: values.salePrice === "" ? null : Number(values.salePrice),
-      status: values.status,
-      warranty: values.warranty.trim(),
-      images,
-      specs: values.specs
-        .filter((spec) => spec.name?.trim() && spec.value?.trim())
-        .map((spec) => ({
-          key: spec.key?.trim() || spec.name.trim().toLowerCase().replace(/\s+/g, "-"),
-          name: spec.name.trim(),
-          value: spec.value.trim(),
-          unit: spec.unit?.trim() || "",
-        })),
-    };
-
-    if (values.slug.trim()) productData.slug = values.slug.trim();
-
-    if (!isEditing) {
-      productData.stock = Number(values.stock);
-    }
-
-    const seo = {
-      title: values.seoTitle.trim(),
-      description: values.seoDescription.trim(),
-      keywords: values.seoKeywords
-        .split(",")
-        .map((keyword) => keyword.trim())
-        .filter(Boolean),
-    };
-    if (seo.title || seo.description || seo.keywords.length) {
-      productData.seo = seo;
-    }
-
     try {
+      const uploadedImages = [];
+      if (selectedFiles.length) {
+        setIsUploading(true);
+        for (const selection of selectedFiles) {
+          const response = await uploadAdminImage(selection.file);
+          const uploaded = response.data.data;
+          uploadedImages.push({
+            url: uploaded.url,
+            publicId: uploaded.publicId,
+            isPrimary: false,
+          });
+        }
+      }
+
+      uploadedImages.forEach((image, index) => {
+        if (!hasPrimaryImage && index === 0) image.isPrimary = true;
+      });
+      const allImages = [...images, ...uploadedImages];
+      if (!allImages.some((image) => image.isPrimary)) {
+        allImages[0].isPrimary = true;
+      }
+
+      const productData = {
+        name: values.name.trim(),
+        categoryId: values.categoryId,
+        brand: values.brand.trim(),
+        listPrice: Number(values.listPrice),
+        salePrice: values.salePrice === "" ? null : Number(values.salePrice),
+        status: values.status,
+        warranty: values.warranty.trim(),
+        images: allImages,
+        specs: values.specs
+          .filter((spec) => spec.name?.trim() && spec.value?.trim())
+          .map((spec) => ({
+            key: spec.key?.trim() || spec.name.trim().toLowerCase().replace(/\s+/g, "-"),
+            name: spec.name.trim(),
+            value: spec.value.trim(),
+            unit: spec.unit?.trim() || "",
+          })),
+      };
+
+      if (values.slug.trim()) productData.slug = values.slug.trim();
+
+      if (!isEditing) {
+        productData.stock = Number(values.stock);
+      }
+
+      const seo = {
+        title: values.seoTitle.trim(),
+        description: values.seoDescription.trim(),
+        keywords: values.seoKeywords
+          .split(",")
+          .map((keyword) => keyword.trim())
+          .filter(Boolean),
+      };
+      if (seo.title || seo.description || seo.keywords.length) {
+        productData.seo = seo;
+      }
+
       if (isEditing) {
         await updateAdminProduct(id, productData);
       } else {
@@ -199,6 +286,8 @@ export default function AdminProductFormPage() {
         }
       });
       setServerError(getErrorMessage(error));
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -368,51 +457,124 @@ export default function AdminProductFormPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black text-slate-950">Hình ảnh sản phẩm</h2>
-              <p className="mt-1 text-sm text-slate-500">Upload ảnh chưa được hỗ trợ; nhập URL và publicId ảnh.</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Chọn một hoặc nhiều ảnh JPEG, PNG, WEBP hoặc GIF (tối đa 5MB mỗi ảnh).
+              </p>
             </div>
-            <button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold hover:bg-slate-50" onClick={() => appendImage({ url: "", isPrimary: false, publicId: "" })}>
-              + Thêm ảnh
-            </button>
           </div>
-          <div className="mt-5 space-y-4">
+          <label className={`${labelClass} mt-5 block`}>
+            Chọn ảnh
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              disabled={isSubmitting}
+              className="mt-2 block w-full cursor-pointer rounded-xl border border-slate-200 bg-white text-sm text-slate-700 file:mr-4 file:border-0 file:bg-orange-50 file:px-4 file:py-3 file:font-bold file:text-orange-700 hover:file:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
+              onChange={handleFileSelection}
+            />
+          </label>
+          {fileError && (
+            <p role="alert" className="mt-3 text-sm text-red-700">{fileError}</p>
+          )}
+          {isUploading && (
+            <p role="status" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-orange-700">
+              <LoaderCircle size={16} className="animate-spin" />
+              Đang tải ảnh lên Cloudinary...
+            </p>
+          )}
+
+          {imageFields.length > 0 && (
+            <>
+              <h3 className="mt-6 text-sm font-bold text-slate-800">Ảnh đã tải lên</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {imageFields.map((field, index) => (
-              <div key={field.id} className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                <label className={labelClass}>
-                  URL ảnh *
-                  <input
-                    type="url"
-                    className={inputClass}
-                    {...register(`images.${index}.url`, {
-                      required: "Vui lòng nhập URL ảnh.",
-                      pattern: {
-                        value: /^https?:\/\/.+/i,
-                        message: "URL ảnh phải bắt đầu bằng http hoặc https.",
-                      },
-                    })}
-                  />
-                  {errors.images?.[index]?.url && <FieldError>{errors.images[index].url.message}</FieldError>}
-                </label>
-                <label className={labelClass}>
-                  Public ID *
-                  <input
-                    className={inputClass}
-                    {...register(`images.${index}.publicId`, { required: "Vui lòng nhập publicId." })}
-                  />
-                  {errors.images?.[index]?.publicId && <FieldError>{errors.images[index].publicId.message}</FieldError>}
-                </label>
-                <div className="flex items-end gap-3 sm:flex-col sm:items-start sm:justify-end">
-                  <label className="flex h-11 items-center gap-2 text-sm font-semibold text-slate-700">
-                    <input type="checkbox" className="h-4 w-4 accent-orange-600" {...register(`images.${index}.isPrimary`)} />
+              <div key={field.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <img
+                  src={imageValues[index]?.url}
+                  alt=""
+                  className="h-16 w-16 shrink-0 rounded-lg bg-slate-100 object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs text-slate-500">
+                    {imageValues[index]?.publicId}
+                  </p>
+                  <label className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(imageValues[index]?.isPrimary)}
+                      className="h-4 w-4 accent-orange-600"
+                      onChange={(event) => {
+                        setValue(
+                          "images",
+                          imageValues.map((image, imageIndex) => ({
+                            ...image,
+                            isPrimary: event.target.checked && imageIndex === index,
+                          })),
+                          { shouldDirty: true },
+                        );
+                      }}
+                    />
                     Ảnh đại diện
                   </label>
-                  <button type="button" disabled={imageFields.length <= 1} className="text-sm font-bold text-red-700 disabled:opacity-40" onClick={() => removeImage(index)}>
-                    Gỡ ảnh
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  aria-label="Gỡ ảnh"
+                  className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => removeImage(index)}
+                >
+                  <Trash2 size={18} />
+                </button>
+                <input type="hidden" {...register(`images.${index}.url`)} />
+                <input type="hidden" {...register(`images.${index}.publicId`)} />
+                <input type="hidden" {...register(`images.${index}.isPrimary`)} />
               </div>
             ))}
-            {errors.images?.message && <FieldError>{errors.images.message}</FieldError>}
-          </div>
+              </div>
+            </>
+          )}
+
+          {selectedFiles.length > 0 && (
+            <>
+              <h3 className="mt-6 text-sm font-bold text-slate-800">
+                Ảnh sẽ tải lên ({selectedFiles.length})
+              </h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {selectedFiles.map((selection, index) => (
+                  <div key={`${selection.file.name}-${selection.file.lastModified}-${index}`} className="flex min-w-0 items-center gap-3 rounded-xl border border-dashed border-orange-200 p-3">
+                    <img
+                      src={selection.preview}
+                      alt=""
+                      className="h-16 w-16 shrink-0 rounded-lg bg-slate-100 object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-800">{selection.file.name}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {(selection.file.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSubmitting}
+                      aria-label={`Gỡ ${selection.file.name}`}
+                      className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                      onClick={() => removeSelectedFile(index)}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {!imageFields.length && !selectedFiles.length && (
+            <div className="mt-5 rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">
+              <ImagePlus size={22} className="mx-auto mb-2" />
+              Chưa có ảnh sản phẩm. Chọn ảnh để xem trước và tải lên.
+            </div>
+          )}
+          {errors.images?.message && <FieldError>{errors.images.message}</FieldError>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
@@ -477,11 +639,11 @@ export default function AdminProductFormPage() {
           <Link to="/admin/products" className="inline-flex h-11 items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-50">
             Hủy
           </Link>
-          <button type="submit" disabled={isSubmitting} className="h-11 rounded-xl bg-orange-600 px-6 text-sm font-bold text-white transition hover:bg-orange-700 disabled:cursor-wait disabled:opacity-60">
+          <button type="submit" disabled={isSubmitting} className="inline-flex h-11 items-center rounded-xl bg-orange-600 px-6 text-sm font-bold text-white transition hover:bg-orange-700 disabled:cursor-wait disabled:opacity-60">
             {isSubmitting ? (
               <>
                 <LoaderCircle size={16} className="mr-2 inline animate-spin" />
-                Đang lưu...
+                {isUploading ? "Đang tải ảnh..." : "Đang lưu..."}
               </>
             ) : isEditing ? "Lưu thay đổi" : "Tạo sản phẩm"}
           </button>

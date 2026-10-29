@@ -31,6 +31,11 @@ export const updateAdminBanner = (id, banner) =>
 export const deleteAdminBanner = (id) =>
   axiosClient.delete(`/admin/banners/${encodeURIComponent(id)}`);
 export const getAdminDashboard = () => axiosClient.get("/admin/dashboard");
+export const uploadAdminImage = (file) => {
+  const formData = new FormData();
+  formData.append("image", file);
+  return axiosClient.post("/admin/upload", formData);
+};
 export const getAdminOrders = (params = {}) =>
   axiosClient.get("/admin/orders", { params });
 export const getAdminOrder = (id) =>
