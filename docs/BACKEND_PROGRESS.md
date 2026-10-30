@@ -54,6 +54,7 @@ Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện đ�
 - `POST /api/cart/items`: Thêm sản phẩm vào giỏ (yêu cầu khách đăng nhập, email đã xác thực).
 - `GET /api/cart`: Xem giỏ hàng và tính tạm tính.
 - `POST /api/orders`: Tạo đơn hàng (yêu cầu khách đăng nhập, email đã xác thực). Bắt buộc có `idempotencyKey` (UUID). Tự động trừ kho và xóa giỏ.
+- `GET /api/orders/my-orders`: Xem lịch sử đơn hàng của khách đã đăng nhập; hỗ trợ `page` (mặc định 1), `limit` (mặc định 10, tối đa 100) và trả về `orderCode`, `createdAt`, `totalAmount`, `status`, `itemCount` cùng thông tin phân trang.
 - `POST /api/orders/track`: Tra cứu đơn hàng bằng `orderCode` và `trackCode`.
 
 ### 3.6. API Quản lý Tồn kho & Đơn hàng (Admin)

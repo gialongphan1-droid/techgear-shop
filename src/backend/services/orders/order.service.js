@@ -318,6 +318,46 @@ export async function trackOrder(payload) {
   return serializeTrackedOrder(order);
 }
 
+export async function listMyOrders(userId, query = {}) {
+  const page = Number(query.page ?? 1);
+  const limit = Number(query.limit ?? 10);
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw serviceError(422, "page hoặc limit không hợp lệ");
+  }
+
+  const filter = { userId: new mongoose.Types.ObjectId(userId) };
+  const [ordersWithNext, [countResult]] = await Promise.all([
+    Order.find(filter)
+      .select("orderCode createdAt totalAmount status items.quantity")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit + 1)
+      .lean(),
+    Order.aggregate([
+      { $match: filter },
+      { $count: "total" },
+    ]),
+  ]);
+  const items = ordersWithNext.slice(0, limit).map((order) => ({
+    orderCode: order.orderCode,
+    createdAt: order.createdAt,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    itemCount: order.items.reduce((total, item) => total + item.quantity, 0),
+  }));
+  const total = countResult?.total || 0;
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
 async function findExistingOrder(idempotencyKey, userId) {
   const order = await Order.findOne({ idempotencyKey, userId }).lean();
   if (!order) return null;
