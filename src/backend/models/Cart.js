@@ -8,6 +8,7 @@ const cartItemSchema = new Schema({
 }, { _id: false });
 
 const cartSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: "User" },
   tokenHash: { type: String, required: true, unique: true, select: false },
   items: {
     type: [cartItemSchema],
@@ -17,5 +18,10 @@ const cartSchema = new Schema({
   status: { type: String, required: true, enum: ["ACTIVE", "PROCESSING", "CONVERTED"], default: "ACTIVE", index: true },
   expireAt: { type: Date, required: true, index: { expires: 0 } },
 }, { timestamps: true });
+
+cartSchema.index(
+  { userId: 1 },
+  { unique: true, partialFilterExpression: { userId: { $type: "objectId" }, status: "ACTIVE" } },
+);
 
 export default mongoose.models.Cart || mongoose.model("Cart", cartSchema);

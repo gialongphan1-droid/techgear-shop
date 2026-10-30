@@ -197,7 +197,7 @@ Sơ đồ ngữ cảnh mức logic của V1; mô hình triển khai và tên mi�
 
 | STT | Hạng mục | Ghi chú xử lý trong V1 | Trạng thái |
 | --- | --- | --- | --- |
-| 1 | Đăng ký, đăng nhập tài khoản khách hàng | Khách mua không cần tài khoản; giỏ hàng và tra cứu đơn dùng cơ chế ẩn danh (mục 1.3.3) | [Mở rộng] |
+| 1 | Đăng ký, đăng nhập tài khoản khách hàng | Bổ sung xác thực Email để khách hàng đăng ký và đăng nhập tài khoản trong V1 | [V1] |
 | 2 | Thanh toán trực tuyến | Không có trạng thái, trường dữ liệu hay luồng “đã thanh toán”, “hoàn tiền” hoạt động; việc thu tiền diễn ra ngoài hệ thống (QĐ-06) | [Mở rộng] |
 | 3 | Tích hợp cổng thanh toán bên thứ ba | Không tích hợp; không lưu thông tin thẻ hay tài khoản thanh toán | [Mở rộng] |
 | 4 | Quản lý kế toán và hóa đơn điện tử | Không xuất hóa đơn, không đối soát doanh thu | [Mở rộng] |

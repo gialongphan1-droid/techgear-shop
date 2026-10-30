@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Category from "../../models/Category.js";
 import Product from "../../models/Product.js";
+import myCache from "../../utils/cache.js";
 
 function serviceError(status, message) {
   const error = new Error(message);
@@ -17,10 +18,6 @@ function publicProduct(product) {
   delete item.stock;
   delete item.viewCount;
   delete item.updatedAt;
-  if (item.categoryId && typeof item.categoryId === "object") {
-    item.category = { _id: item.categoryId._id, name: item.categoryId.name, slug: item.categoryId.slug };
-    delete item.categoryId;
-  }
   if (Array.isArray(item.images)) {
     item.images = item.images.map(({ url, isPrimary }) => ({ url, isPrimary }));
   }
@@ -30,9 +27,24 @@ function publicProduct(product) {
 export async function listPublicProducts(query = {}) {
   const page = Math.max(Number.parseInt(query.page || "1", 10) || 1, 1);
   const limit = Math.min(Math.max(Number.parseInt(query.limit || "20", 10) || 20, 1), 100);
+  const cacheKey = [
+    "products",
+    `page_${page}`,
+    `limit_${limit}`,
+    `category_${String(query.category || "").trim().toLowerCase()}`,
+    `brand_${String(query.brand || "").trim().toLowerCase()}`,
+    `minPrice_${query.minPrice ?? ""}`,
+    `maxPrice_${query.maxPrice ?? ""}`,
+    `search_${String(query.search || "").trim().toLowerCase()}`,
+    `sort_${String(query.sort || "").trim().toLowerCase()}`,
+  ].join("_");
+
+  const cached = myCache.get(cacheKey);
+  if (cached) return cached;
+
   const filter = { status: "ACTIVE" };
 
-  const activeCategories = await Category.find({ isActive: true }).select("_id");
+  const activeCategories = await Category.find({ isActive: true }).select("_id").lean();
   filter.categoryId = { $in: activeCategories.map((category) => category._id) };
 
   if (typeof query.category === "string" && query.category.trim()) {
@@ -41,7 +53,7 @@ export async function listPublicProducts(query = {}) {
     if (mongoose.isObjectIdOrHexString(categoryQuery)) {
       category = activeCategories.find((item) => item._id.toString() === categoryQuery);
     } else {
-      category = await Category.findOne({ slug: categoryQuery.toLowerCase(), isActive: true }).select("_id");
+      category = await Category.findOne({ slug: categoryQuery.toLowerCase(), isActive: true }).select("_id").lean();
     }
     if (!category) return { items: [], pagination: { page, limit, total: 0, totalPages: 0 } };
     filter.categoryId = category._id;
@@ -76,18 +88,23 @@ export async function listPublicProducts(query = {}) {
   };
   const sort = sortMap[query.sort] || sortMap.newest;
 
-  const [items, total] = await Promise.all([
-    Product.find(filter)
-      .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
-      .populate("categoryId", "name slug isActive")
-      .sort(sort)
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-    Product.countDocuments(filter),
-  ]);
+  const dbStart = Date.now();
+  const result = await Product.find(filter)
+    .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
+    .sort(sort)
+    .skip((page - 1) * limit)
+    .limit(limit + 1)
+    .lean();
+  console.log("Thời gian query DB:", Date.now() - dbStart, "ms");
 
-  return { items: items.map(publicProduct), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  const hasNextPage = result.length > limit;
+  const items = hasNextPage ? result.slice(0, limit) : result;
+  const response = {
+    items: items.map(publicProduct),
+    pagination: { page, limit, hasNextPage },
+  };
+  myCache.set(cacheKey, response);
+  return response;
 }
 
 export async function getPublicProductBySlug(slug) {

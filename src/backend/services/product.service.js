@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import Category from "../models/Category.js";
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
+import { flushPublicProductCache } from "../utils/cache.js";
 
 function serviceError(status, message, errors = []) {
   const error = new Error(message);
@@ -25,8 +26,8 @@ async function ensureCategory(categoryId) {
 }
 
 export async function listProductsAdmin(query) {
-  const page = Number.parseInt(query.page || "1", 10);
-  const limit = Math.min(Number.parseInt(query.limit || "20", 10), 100);
+  const page = Math.max(Number.parseInt(query.page || "1", 10) || 1, 1);
+  const limit = Math.min(Math.max(Number.parseInt(query.limit || "20", 10) || 20, 1), 100);
   const filter = {};
 
   if (typeof query.search === "string" && query.search.trim()) {
@@ -40,7 +41,12 @@ export async function listProductsAdmin(query) {
   if (["ACTIVE", "PAUSED", "INACTIVE"].includes(query.status)) filter.status = query.status;
 
   const [items, total] = await Promise.all([
-    Product.find(filter).populate("categoryId", "name slug isActive").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+    Product.find(filter)
+      .populate("categoryId", "name slug isActive")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
     Product.countDocuments(filter),
   ]);
 
@@ -66,7 +72,9 @@ export async function createProductAdmin(payload) {
   if (duplicateSlug) throw serviceError(409, "Tên hoặc slug sản phẩm đã tồn tại");
 
   try {
-    return await Product.create({ ...payload, slug });
+    const created = await Product.create({ ...payload, slug });
+    flushPublicProductCache();
+    return created;
   } catch (error) {
     if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug sản phẩm đã tồn tại");
     throw error;
@@ -98,6 +106,7 @@ export async function updateProductAdmin(id, payload) {
 
   try {
     await product.save();
+    flushPublicProductCache();
     return product;
   } catch (error) {
     if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug sản phẩm đã tồn tại");
@@ -109,6 +118,7 @@ export async function updateProductStatusAdmin(id, status) {
   if (!mongoose.isObjectIdOrHexString(id)) throw serviceError(422, "ID sản phẩm không hợp lệ");
   const product = await Product.findByIdAndUpdate(id, { $set: { status } }, { new: true, runValidators: true });
   if (!product) throw serviceError(404, "Sản phẩm không tồn tại");
+  flushPublicProductCache();
   return product;
 }
 
@@ -121,10 +131,12 @@ export async function deleteProductAdmin(id) {
   if (usedInOrder) {
     product.status = "INACTIVE";
     await product.save();
+    flushPublicProductCache();
     return { action: "inactive", product };
   }
 
   await Product.deleteOne({ _id: product._id });
+  flushPublicProductCache();
 
   if (cloudinary.config().cloud_name && product.images?.length) {
     await Promise.allSettled(product.images.map((image) => image.publicId ? cloudinary.uploader.destroy(image.publicId) : null));

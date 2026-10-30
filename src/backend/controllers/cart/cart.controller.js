@@ -40,7 +40,7 @@ export function getCart(req, res, next) {
 export function addCartItem(req, res, next) {
   const validation = validationError(res, req);
   if (validation) return validation;
-  return run(res, next, () => cartService.addCartItem(req, res, req.body), "Thêm sản phẩm vào giỏ hàng thành công");
+  return run(res, next, () => cartService.addCartItem(req, req.body), "Thêm sản phẩm vào giỏ hàng thành công");
 }
 
 export function updateCartItem(req, res, next) {

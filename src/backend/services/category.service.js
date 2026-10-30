@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Category from "../models/Category.js";
 import Product from "../models/Product.js";
+import { flushPublicProductCache } from "../utils/cache.js";
 
 function serviceError(status, message) {
   const error = new Error(message);
@@ -43,7 +44,9 @@ export async function createCategoryAdmin(payload) {
     throw serviceError(409, "Tên hoặc slug danh mục đã tồn tại");
   }
   try {
-    return await Category.create({ ...payload, slug });
+    const category = await Category.create({ ...payload, slug });
+    flushPublicProductCache();
+    return category;
   } catch (error) {
     if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug danh mục đã tồn tại");
     throw error;
@@ -61,13 +64,21 @@ export async function updateCategoryAdmin(id, payload) {
   for (const key of ["name", "slug", "description", "iconUrl", "isActive"]) {
     if (payload[key] !== undefined) category[key] = key === "slug" ? slug : payload[key];
   }
-  try { await category.save(); return category; } catch (error) { if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug danh mục đã tồn tại"); throw error; }
+  try {
+    await category.save();
+    flushPublicProductCache();
+    return category;
+  } catch (error) {
+    if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug danh mục đã tồn tại");
+    throw error;
+  }
 }
 
 export async function setCategoryActiveAdmin(id, isActive) {
   if (!mongoose.isObjectIdOrHexString(id)) throw serviceError(422, "ID danh mục không hợp lệ");
   const category = await Category.findByIdAndUpdate(id, { $set: { isActive } }, { new: true, runValidators: true });
   if (!category) throw serviceError(404, "Danh mục không tồn tại");
+  flushPublicProductCache();
   return category;
 }
 
@@ -78,5 +89,6 @@ export async function deleteCategoryAdmin(id) {
   const referencedProduct = await Product.exists({ categoryId: category._id });
   if (referencedProduct) throw serviceError(409, "Không thể xóa danh mục đang được sản phẩm sử dụng");
   await Category.deleteOne({ _id: category._id });
+  flushPublicProductCache();
   return category;
 }

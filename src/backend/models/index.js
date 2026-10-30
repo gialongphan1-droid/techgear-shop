@@ -6,3 +6,4 @@ export { default as InventoryLog } from "./InventoryLog.js";
 export { default as Order } from "./Order.js";
 export { default as OrderHistory } from "./OrderHistory.js";
 export { default as Product } from "./Product.js";
+export { default as User } from "./User.js";

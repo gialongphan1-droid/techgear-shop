@@ -2,12 +2,13 @@ import { Router } from "express";
 import { addCartItem, clearCart, deleteCartItem, getCart, updateCartItem } from "../../controllers/cart/cart.controller.js";
 import { checkOrigin } from "../../middleware/origin.middleware.js";
 import { requireCsrf } from "../../middleware/csrf.middleware.js";
+import { requireCustomerAuth } from "../../middleware/customerAuth.middleware.js";
 import { cartRateLimiter } from "../../middleware/rateLimit.middleware.js";
 import { validateAddCartItem, validateDeleteCartItem, validateUpdateCartItem } from "../../validators/cart/cart.validator.js";
 
 const router = Router();
 
-router.use("/cart", cartRateLimiter);
+router.use("/cart", requireCustomerAuth, cartRateLimiter);
 
 router.get("/cart", getCart);
 router.post("/cart/items", checkOrigin, requireCsrf, validateAddCartItem, addCartItem);

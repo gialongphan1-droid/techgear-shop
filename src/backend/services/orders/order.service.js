@@ -7,7 +7,6 @@ import Order from "../../models/Order.js";
 import OrderHistory from "../../models/OrderHistory.js";
 import Product from "../../models/Product.js";
 
-const CART_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_CART_ITEMS = 20;
 const MAX_QUANTITY_PER_ITEM = 10;
 
@@ -27,27 +26,12 @@ function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
 
-function cartCookieName() {
-  return process.env.CART_COOKIE_NAME || "techgear_cart";
-}
-
-function cartCookieToken(req) {
-  const token = req.cookies?.[cartCookieName()];
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/i.test(token)) return null;
-  return token;
-}
-
 async function findCheckoutCart(req, session) {
-  const token = cartCookieToken(req);
-  if (!token) {
-    throw serviceError(422, "Giỏ hàng trống", [], {});
-  }
-
   let query = Cart.findOne({
-    tokenHash: hashText(token),
+    userId: req.user.id,
     status: "ACTIVE",
     expireAt: { $gt: new Date() },
-  }).select("+tokenHash items status expireAt");
+  }).select("userId items status expireAt");
   if (session) query = query.session(session);
 
   const cart = await query;
@@ -334,8 +318,8 @@ export async function trackOrder(payload) {
   return serializeTrackedOrder(order);
 }
 
-async function findExistingOrder(idempotencyKey) {
-  const order = await Order.findOne({ idempotencyKey }).lean();
+async function findExistingOrder(idempotencyKey, userId) {
+  const order = await Order.findOne({ idempotencyKey, userId }).lean();
   if (!order) return null;
   return { order: serializeOrder(order), isIdempotent: true, cartCleared: false };
 }
@@ -356,12 +340,13 @@ async function generateUniqueOrderCode(session) {
   throw serviceError(500, "Không thể sinh mã đơn hàng");
 }
 
-async function createOrderDocument(validated, customerInfo, idempotencyKey, orderCode, trackCode) {
+async function createOrderDocument(validated, customerInfo, idempotencyKey, orderCode, trackCode, userId) {
   const trackHash = hashText(trackCode);
   return {
     orderCode,
     trackHash,
     idempotencyKey,
+    userId,
     customerInfo,
     items: validated.items.map((item) => ({
       productId: item.productId,
@@ -408,15 +393,16 @@ async function executeTransaction(operation) {
   }
 }
 
-async function createWithTransaction(cart, payload, customerInfo) {
+async function createWithTransaction(cart, payload, customerInfo, userId) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       return await executeTransaction(async (session) => {
         const cartInTransaction = await Cart.findOne({
           _id: cart._id,
+          userId,
           status: "ACTIVE",
           expireAt: { $gt: new Date() },
-        }).select("+tokenHash items status expireAt").session(session);
+        }).select("userId items status expireAt").session(session);
         if (!cartInTransaction || cartInTransaction.items.length === 0) {
           throw serviceError(422, "Giỏ hàng trống", [], {});
         }
@@ -464,7 +450,7 @@ async function createWithTransaction(cart, payload, customerInfo) {
 
         const orderCode = await generateUniqueOrderCode(session);
         const trackCode = crypto.randomUUID();
-        const orderDocument = await createOrderDocument(validated, customerInfo, payload.idempotencyKey, orderCode, trackCode);
+        const orderDocument = await createOrderDocument(validated, customerInfo, payload.idempotencyKey, orderCode, trackCode, userId);
         const [order] = await Order.create([orderDocument], { session });
 
         if (stockChanges.length > 0) {
@@ -492,6 +478,7 @@ async function createWithTransaction(cart, payload, customerInfo) {
 
         const cartDelete = await Cart.deleteOne({
           _id: cartInTransaction._id,
+          userId,
           status: "ACTIVE",
         }, { session });
         if (cartDelete.deletedCount !== 1) {
@@ -507,7 +494,7 @@ async function createWithTransaction(cart, payload, customerInfo) {
       });
     } catch (error) {
       if (error?.code === 11000) {
-        const existing = await findExistingOrder(payload.idempotencyKey);
+        const existing = await findExistingOrder(payload.idempotencyKey, userId);
         if (existing) return { ...existing, cartCleared: true };
         continue;
       }
@@ -535,7 +522,7 @@ async function compensateStock(decrements) {
   }
 }
 
-async function createWithoutTransaction(cart, payload, customerInfo) {
+async function createWithoutTransaction(cart, payload, customerInfo, userId) {
   const validated = await validateCartState(cart, null);
   verifyClientTotal(payload, validated);
 
@@ -600,7 +587,7 @@ async function createWithoutTransaction(cart, payload, customerInfo) {
 
     const orderCode = await generateUniqueOrderCode(null);
     const trackCode = crypto.randomUUID();
-    const orderDocument = await createOrderDocument(finalValidated, customerInfo, payload.idempotencyKey, orderCode, trackCode);
+    const orderDocument = await createOrderDocument(finalValidated, customerInfo, payload.idempotencyKey, orderCode, trackCode, userId);
     createdOrder = await Order.create(orderDocument);
 
     await InventoryLog.insertMany(
@@ -627,6 +614,7 @@ async function createWithoutTransaction(cart, payload, customerInfo) {
 
     const cartDelete = await Cart.deleteOne({
       _id: cart._id,
+      userId,
       status: "ACTIVE",
       expireAt: { $gt: new Date() },
     });
@@ -642,7 +630,7 @@ async function createWithoutTransaction(cart, payload, customerInfo) {
     };
   } catch (error) {
     if (error?.code === 11000) {
-      const existing = await findExistingOrder(payload.idempotencyKey);
+      const existing = await findExistingOrder(payload.idempotencyKey, userId);
       if (existing) {
         await compensateStock(decrements);
         return { ...existing, cartCleared: true };
@@ -699,7 +687,8 @@ export async function createOrder(req, res, payload) {
     throw serviceError(422, "idempotencyKey không hợp lệ", [{ field: "idempotencyKey", message: "idempotencyKey phải là chuỗi UUID/GUID" }], {});
   }
 
-  const existing = await findExistingOrder(payload.idempotencyKey);
+  const userId = req.user.id;
+  const existing = await findExistingOrder(payload.idempotencyKey, userId);
   if (existing) {
     return { ...existing, cartCleared: true };
   }
@@ -707,7 +696,7 @@ export async function createOrder(req, res, payload) {
   const cart = await findCheckoutCart(req, null);
 
   try {
-    return await createWithTransaction(cart, payload, customerInfo);
+    return await createWithTransaction(cart, payload, customerInfo, userId);
   } catch (error) {
     if (!transactionUnsupported(error) && error?.status !== 422 && error?.status !== 409 && error?.code !== 11000) {
       throw error;
@@ -715,6 +704,6 @@ export async function createOrder(req, res, payload) {
     if (!transactionUnsupported(error)) {
       throw error;
     }
-    return createWithoutTransaction(cart, payload, customerInfo);
+    return createWithoutTransaction(cart, payload, customerInfo, userId);
   }
 }

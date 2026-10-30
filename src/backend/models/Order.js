@@ -19,6 +19,7 @@ const customerInfoSchema = new Schema({
 }, { _id: false });
 
 const orderSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: "User", index: true },
   orderCode: { type: String, required: true, unique: true, trim: true },
   trackHash: { type: String, required: true, unique: true, select: false },
   idempotencyKey: { type: String, required: true, unique: true, trim: true },

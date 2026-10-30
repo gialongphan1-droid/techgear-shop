@@ -5,7 +5,7 @@ Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện đ�
 ## 1. THÔNG TIN MÔI TRƯỜNG (Environment)
 
 - **Base URL:** `http://localhost:5000/api`
-- **Cơ chế xác thực:** JWT lưu trong Cookie HTTP-only (Tên cookie: `admin_token`).
+- **Cơ chế xác thực:** Admin và khách hàng dùng JWT trong Cookie HTTP-only (`admin_token`, `user_token`).
 - **Cloudinary Upload:** Bổ sung `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` và `CLOUDINARY_UPLOAD_FOLDER=techgear/uploads` trong `src/backend/.env`.
 - **Bảo mật CSRF:** Mọi request ghi (POST, PUT, PATCH, DELETE) yêu cầu Header `x-csrf-token`. (Lấy mã này từ response của API Đăng nhập).
 - **Bắt buộc Header:** `Origin: http://localhost:5173` (để vượt qua CORS).
@@ -51,10 +51,9 @@ Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện đ�
 - **`DELETE /admin/banners/:id`**: Xóa banner.
 
 ### 3.5. API Giỏ hàng & Đơn hàng (Khách hàng)
-
-- `POST /api/cart/items`: Thêm sản phẩm vào giỏ (dùng Cookie token).
+- `POST /api/cart/items`: Thêm sản phẩm vào giỏ (yêu cầu khách đăng nhập, email đã xác thực).
 - `GET /api/cart`: Xem giỏ hàng và tính tạm tính.
-- `POST /api/orders`: Tạo đơn hàng. Bắt buộc có `idempotencyKey` (UUID). Tự động trừ kho và xóa giỏ.
+- `POST /api/orders`: Tạo đơn hàng (yêu cầu khách đăng nhập, email đã xác thực). Bắt buộc có `idempotencyKey` (UUID). Tự động trừ kho và xóa giỏ.
 - `POST /api/orders/track`: Tra cứu đơn hàng bằng `orderCode` và `trackCode`.
 
 ### 3.6. API Quản lý Tồn kho & Đơn hàng (Admin)
@@ -90,3 +89,28 @@ Hiện tại Database `techgear_shop` trên MongoDB Atlas đang hiển thị 5 c
 2. Tạo Interceptor xử lý lỗi: Nếu nhận mã `401` thì đá về trang đăng nhập; nếu `403` thì hiển thị thông báo lỗi CSRF/Origin.
 3. Với các API ghi (Thêm/Sửa/Xóa), bắt buộc phải đính kèm `x-csrf-token` và `Origin` vào Headers.
 4. Tạm thời dùng Mock Data cho các tính năng Giỏ hàng/Đặt hàng cho đến khi Backend thông báo hoàn thiện.
+
+### 3.7. Các tính năng hạ tầng & Tối ưu hóa (Mới cập nhật)
+- **Rate Limiter:** Đã cấu hình lại với các giới hạn:
+  - Global API: 300 req / 15 phút.
+  - Admin Login: 5 req / 15 phút.
+  - Tạo đơn: 3 req / phút.
+  - Tra cứu đơn: 5 req / phút.
+  - Có thể tắt qua biến `RATE_LIMIT_ENABLED=false` trong file `.env` khi dev.
+- **Tối ưu hóa hiệu năng API `GET /api/products`:**
+  - Đã thêm Index cho `status` và `categoryId`.
+  - Đã dùng `.lean()` cho query.
+  - Đã tích hợp **In-memory Cache (node-cache)** với TTL 60 giây.
+  - Phân trang dùng `limit + 1` thay vì `countDocuments()`.
+  - Kết quả: Tốc độ đạt >1.100 req/s (tăng 47 lần), độ trễ < 100ms.
+- **Cloudinary:** Đã cấu hình thành công (cloud_name: techgear). API upload ảnh đã hoạt động.
+
+### 3.8. API Xác thực Khách hàng (User) & Thay đổi luồng mua hàng
+- **Thay đổi nghiệp vụ:** Khách hàng bắt buộc phải Đăng nhập và Xác thực Email mới được thêm vào giỏ hàng và đặt đơn. Xem sản phẩm vẫn công khai.
+- **Các API mới:**
+  - `POST /api/auth/register`: Đăng ký (gửi email xác thực).
+  - `GET /api/auth/verify-email?token=...`: Xác thực tài khoản qua link trong email.
+  - `POST /api/auth/login`: Đăng nhập, trả về JWT trong Cookie HTTP-only (role: 'customer') và `csrfToken`.
+- **Thay đổi API cũ:**
+  - `POST /api/cart/items`, `GET /api/cart`, v.v. và `POST /api/orders`: Bắt buộc phải có Cookie đăng nhập của Customer. Trả lỗi `401` nếu chưa đăng nhập, `403` nếu chưa xác thực email.
+  - Dữ liệu Giỏ hàng (Cart) và Đơn hàng (Order) giờ đã được gắn với `userId`.

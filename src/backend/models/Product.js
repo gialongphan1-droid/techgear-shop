@@ -67,4 +67,6 @@ productSchema.pre("validate", function generateSlug(next) {
   next();
 });
 
+productSchema.index({ status: 1, categoryId: 1 });
+
 export default mongoose.models.Product || mongoose.model("Product", productSchema);

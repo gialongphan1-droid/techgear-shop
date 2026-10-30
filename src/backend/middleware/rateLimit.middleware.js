@@ -1,10 +1,36 @@
 import rateLimit from "express-rate-limit";
 
+const isRateLimitDisabled = () =>
+  process.env.RATE_LIMIT_ENABLED?.trim().toLowerCase() === "false";
+
+export const globalApiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: () => {
+    const configuredLimit = Number(process.env.RATE_LIMIT_MAX);
+    return Number.isInteger(configuredLimit) && configuredLimit > 0
+      ? configuredLimit
+      : 300;
+  },
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skip: isRateLimitDisabled,
+  keyGenerator: (req) => req.ip || "unknown",
+  handler: (_req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: "Bạn đã gửi quá nhiều yêu cầu, vui lòng thử lại sau.",
+      data: {},
+      errors: [],
+    });
+  },
+});
+
 export const cartRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 60,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => req.ip || "unknown",
   message: {
     success: false,
@@ -19,12 +45,15 @@ export const loginRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => req.ip || "unknown",
-  message: {
-    success: false,
-    message: "Bạn đã thử đăng nhập quá nhiều lần, vui lòng thử lại sau.",
-    data: {},
-    errors: [],
+  handler: (_req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: "Bạn đã thử đăng nhập quá nhiều lần, vui lòng thử lại sau.",
+      data: {},
+      errors: [],
+    });
   },
 });
 
@@ -33,12 +62,15 @@ export const orderRateLimiter = rateLimit({
   limit: 3,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => req.ip || "unknown",
-  message: {
-    success: false,
-    message: "Bạn đã gửi quá nhiều yêu cầu tạo đơn, vui lòng thử lại sau.",
-    data: {},
-    errors: [],
+  handler: (_req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: "Bạn đã gửi quá nhiều yêu cầu tạo đơn, vui lòng thử lại sau.",
+      data: {},
+      errors: [],
+    });
   },
 });
 
@@ -47,12 +79,15 @@ export const trackOrderIpRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => req.ip || "unknown",
-  message: {
-    success: false,
-    message: "Bạn đã gửi quá nhiều yêu cầu tra cứu, vui lòng thử lại sau.",
-    data: {},
-    errors: [],
+  handler: (_req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: "Bạn đã gửi quá nhiều yêu cầu tra cứu, vui lòng thử lại sau.",
+      data: {},
+      errors: [],
+    });
   },
 });
 
@@ -61,6 +96,7 @@ export const trackOrderCodeRateLimiter = rateLimit({
   limit: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => {
     const orderCode = req.body?.orderCode;
     if (typeof orderCode === "string" && /^TG-\d{8}-[A-F0-9]{10}$/i.test(orderCode.trim())) {
@@ -81,6 +117,7 @@ export const inventoryAdjustRateLimiter = rateLimit({
   limit: 30,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => req.admin?.id ? `admin:${req.admin.id}` : (req.ip || "unknown"),
   message: {
     success: false,
@@ -95,6 +132,7 @@ export const adminOrderStatusRateLimiter = rateLimit({
   limit: 30,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) => req.admin?.id ? `admin:${req.admin.id}` : (req.ip || "unknown"),
   message: {
     success: false,
@@ -109,6 +147,7 @@ export const adminUploadRateLimiter = rateLimit({
   limit: 20,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  skip: isRateLimitDisabled,
   keyGenerator: (req) =>
     req.admin?.id ? `admin:${req.admin.id}` : (req.ip || "unknown"),
   message: {

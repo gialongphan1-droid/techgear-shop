@@ -1,10 +1,9 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import mongoose from "mongoose";
 import Cart from "../../models/Cart.js";
 import Category from "../../models/Category.js";
 import Product from "../../models/Product.js";
 
-const CART_COOKIE_NAME = process.env.CART_COOKIE_NAME || "techgear_cart";
 const CART_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_QUANTITY = 10;
 const MAX_ITEMS = 20;
@@ -16,40 +15,23 @@ function serviceError(status, message, errors = []) {
   return error;
 }
 
-function hashToken(token) {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-function newToken() {
-  return crypto.randomBytes(32).toString("hex");
-}
-
-function cartCookieOptions() {
-  return {
-    httpOnly: true,
-    secure: String(process.env.COOKIE_SECURE).toLowerCase() === "true",
-    sameSite: process.env.COOKIE_SAMESITE || "strict",
-    maxAge: CART_TTL_MS,
-    path: "/",
-  };
-}
-
 async function findCart(req) {
-  const token = req.cookies?.[CART_COOKIE_NAME];
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/i.test(token)) return null;
-  const cart = await Cart.findOne({ tokenHash: hashToken(token), status: "ACTIVE" }).select("+tokenHash items status expireAt");
+  const cart = await Cart.findOne({
+    userId: req.user.id,
+    status: "ACTIVE",
+    expireAt: { $gt: new Date() },
+  }).select("userId items status expireAt");
   if (!cart || cart.expireAt <= new Date()) return null;
   return cart;
 }
 
-async function createCart(res) {
-  let token;
+async function createCart(req) {
   let cart;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    token = newToken();
     try {
       cart = await Cart.create({
-        tokenHash: hashToken(token),
+        userId: req.user.id,
+        tokenHash: crypto.randomBytes(32).toString("hex"),
         items: [],
         status: "ACTIVE",
         expireAt: new Date(Date.now() + CART_TTL_MS),
@@ -57,10 +39,22 @@ async function createCart(res) {
       break;
     } catch (error) {
       if (error?.code !== 11000) throw error;
+      const existingCart = await findCart(req);
+      if (existingCart) return existingCart;
+
+      const expiredCart = await Cart.findOne({
+        userId: req.user.id,
+        status: "ACTIVE",
+      }).select("userId items status expireAt");
+      if (expiredCart) {
+        expiredCart.items = [];
+        expiredCart.expireAt = new Date(Date.now() + CART_TTL_MS);
+        await expiredCart.save();
+        return expiredCart;
+      }
     }
   }
   if (!cart) throw serviceError(500, "Không thể tạo giỏ hàng");
-  res.cookie(CART_COOKIE_NAME, token, cartCookieOptions());
   return cart;
 }
 
@@ -126,14 +120,14 @@ export async function getCart(req) {
   return formatCart(cart);
 }
 
-export async function addCartItem(req, res, payload) {
+export async function addCartItem(req, payload) {
   if (!mongoose.isObjectIdOrHexString(payload.productId)) throw serviceError(422, "productId không hợp lệ");
   const product = await Product.findById(payload.productId).populate("categoryId", "isActive");
   if (!product) throw serviceError(404, "Sản phẩm không tồn tại");
   if (product.status !== "ACTIVE" || !product.categoryId?.isActive) throw serviceError(422, "Sản phẩm không đủ điều kiện đặt mua");
 
   let cart = await findCart(req);
-  if (!cart) cart = await createCart(res);
+  if (!cart) cart = await createCart(req);
 
   const currentItem = cart.items.find((item) => item.productId.toString() === product._id.toString());
   const nextQuantity = (currentItem?.quantity || 0) + payload.quantity;
