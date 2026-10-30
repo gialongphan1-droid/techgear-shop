@@ -28,6 +28,9 @@ The session is checked through `GET /api/auth/me` after page load, login and
 registration use the Auth V2 APIs, and logout clears the HTTP-only session
 cookie through `POST /api/auth/logout`. Cart and checkout routes require an
 authenticated, email-verified customer.
+The protected `/my-orders` route loads paginated order history from
+`GET /api/orders/my-orders?page=1&limit=10`. The Header links signed-in
+customers to their order history and guests to public order tracking.
 
 The Admin dashboard requests `GET /admin/dashboard` and displays the API error
 when the endpoint is unavailable. The endpoint is described in the API

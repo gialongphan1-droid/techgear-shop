@@ -19,6 +19,7 @@ import { selectCompareProducts } from "../../store/compareSlice.js";
 import { logoutCustomer } from "../../services/publicApi.js";
 import {
   clearCustomerSession,
+  selectCustomerAuthStatus,
   selectCustomerUser,
 } from "../../store/userAuthSlice.js";
 import Button from "../ui/Button.jsx";
@@ -43,6 +44,7 @@ export default function Header() {
   const itemCount = useSelector(selectCartItemCount);
   const compareCount = useSelector(selectCompareProducts).length;
   const customer = useSelector(selectCustomerUser);
+  const authStatus = useSelector(selectCustomerAuthStatus);
   const navigate = useNavigate();
   const {
     handleSubmit: handleDesktopSubmit,
@@ -170,9 +172,14 @@ export default function Header() {
           <NavLink to="/products" className={navLinkClass}>
             Sản phẩm
           </NavLink>
-          <NavLink to="/track-order" className={navLinkClass}>
-            Tra cứu đơn
-          </NavLink>
+          {authStatus !== "checking" && (
+            <NavLink
+              to={customer ? "/my-orders" : "/track-order"}
+              className={navLinkClass}
+            >
+              {customer ? "Đơn hàng của tôi" : "Tra cứu đơn"}
+            </NavLink>
+          )}
           <NavLink to="/compare" className={navLinkClass}>
             So sánh
           </NavLink>
@@ -198,7 +205,7 @@ export default function Header() {
               {loggingOut ? "Đang thoát..." : "Đăng xuất"}
             </button>
           </div>
-        ) : (
+        ) : authStatus !== "checking" ? (
           <Link
             to="/login"
             className="hidden items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-brand-700 lg:inline-flex"
@@ -206,7 +213,7 @@ export default function Header() {
             <LogIn size={17} />
             Đăng nhập
           </Link>
-        )}
+        ) : null}
 
         <Link
           to="/compare"
@@ -276,7 +283,7 @@ export default function Header() {
                   {loggingOut ? "Đang thoát" : "Đăng xuất"}
                 </button>
               </div>
-            ) : (
+            ) : authStatus !== "checking" ? (
               <Link
                 to="/login"
                 className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
@@ -284,7 +291,7 @@ export default function Header() {
               >
                 <LogIn size={16} /> Đăng nhập
               </Link>
-            )}
+            ) : null}
             <NavLink
               to="/"
               end
@@ -301,11 +308,11 @@ export default function Header() {
               Tất cả sản phẩm
             </NavLink>
             <NavLink
-              to="/track-order"
+              to={customer ? "/my-orders" : "/track-order"}
               className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               onClick={() => setMenuOpen(false)}
             >
-              Tra cứu đơn hàng
+              {customer ? "Đơn hàng của tôi" : "Tra cứu đơn hàng"}
             </NavLink>
             <NavLink
               to="/compare"

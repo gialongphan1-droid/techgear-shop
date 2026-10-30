@@ -27,3 +27,5 @@ export const createCustomerOrder = (payload) =>
   axiosClient.post("/orders", payload);
 export const trackCustomerOrder = (payload) =>
   axiosClient.post("/orders/track", payload);
+export const getCustomerOrders = (params = { page: 1, limit: 10 }) =>
+  axiosClient.get("/orders/my-orders", { params });
