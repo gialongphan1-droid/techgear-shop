@@ -1,4 +1,15 @@
-import { body } from "express-validator";
+import { body, query } from "express-validator";
+
+export const validateMyOrdersQuery = [
+  query().custom((value) =>
+    typeof value === "object"
+      && value !== null
+      && !Array.isArray(value)
+      && Object.keys(value).every((key) => ["page", "limit"].includes(key)),
+  ).withMessage("Chứa tham số truy vấn không được phép"),
+  query("page").optional().isInt({ min: 1 }).withMessage("page phải là số nguyên dương").toInt(),
+  query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("limit phải từ 1 đến 100").toInt(),
+];
 
 export const validateCreateOrder = [
   body().custom((value) => typeof value === "object" && value !== null && !Array.isArray(value)).withMessage("Body không hợp lệ"),

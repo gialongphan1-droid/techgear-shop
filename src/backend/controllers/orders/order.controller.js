@@ -56,3 +56,20 @@ export async function trackOrder(req, res, next) {
     return next(error);
   }
 }
+
+export async function listMyOrders(req, res, next) {
+  const validation = validationError(res, req);
+  if (validation) return validation;
+
+  try {
+    const result = await orderService.listMyOrders(req.user.id, req.query);
+    return res.status(200).json({
+      success: true,
+      message: "Lấy lịch sử đơn hàng thành công",
+      data: result,
+      errors: [],
+    });
+  } catch (error) {
+    return next(error);
+  }
+}

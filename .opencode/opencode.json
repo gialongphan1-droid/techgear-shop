@@ -1,6 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": [
-    "list"
-  ]
+  "plugin": ["@geeder/opencode-copilot-multi-auth@0.4.0"]
 }
