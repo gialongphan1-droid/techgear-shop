@@ -120,7 +120,7 @@ async function validateCartState(cart, session, options = {}) {
   const normalizedItems = normalizeCartItems(cart);
   const productIds = normalizedItems.map((item) => item.productId);
 
-  let productQuery = Product.find({ _id: { $in: productIds } }).select("name sku categoryId listPrice salePrice stock status");
+  let productQuery = Product.find({ _id: { $in: productIds } }).select("name images sku categoryId listPrice salePrice stock status");
   if (session) productQuery = productQuery.session(session);
   const products = await productQuery.lean();
   const productMap = new Map(products.map((product) => [product._id.toString(), product]));
@@ -191,6 +191,7 @@ async function validateCartState(cart, session, options = {}) {
     return {
       productId: product._id,
       name: product.name,
+      image: product.images?.find((image) => image.isPrimary)?.url || product.images?.[0]?.url || null,
       sku: product.sku || undefined,
       unitPrice,
       quantity: item.quantity,
@@ -328,7 +329,7 @@ export async function listMyOrders(userId, query = {}) {
   const filter = { userId: new mongoose.Types.ObjectId(userId) };
   const [ordersWithNext, [countResult]] = await Promise.all([
     Order.find(filter)
-      .select("orderCode createdAt totalAmount status items.quantity")
+      .select("orderCode createdAt totalAmount status items.name items.image items.quantity")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit + 1)
@@ -344,6 +345,11 @@ export async function listMyOrders(userId, query = {}) {
     totalAmount: order.totalAmount,
     status: order.status,
     itemCount: order.items.reduce((total, item) => total + item.quantity, 0),
+    previewItems: order.items.slice(0, 3).map((item) => ({
+      name: item.name,
+      image: item.image || null,
+      quantity: item.quantity,
+    })),
   }));
   const total = countResult?.total || 0;
 

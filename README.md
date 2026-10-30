@@ -42,3 +42,12 @@ npm run dev
   - *Tài khoản mặc định:* `admin@techgear.com`
   - *Mật khẩu:* `Admin@123456`
 ````
+
+## ⚠️ Checklist trước khi deploy production
+- [ ] Đặt `RATE_LIMIT_ENABLED=true` trong `.env` (hiện đang `false` để dev test)
+- [ ] Đặt `COOKIE_SECURE=true` (production dùng HTTPS)
+- [ ] Đổi `JWT_SECRET` sang secret mới, mạnh hơn (≥ 32 ký tự)
+- [ ] Cập nhật `CLIENT_ORIGINS` thành domain thật (VD: `https://techgear.shop`)
+- [ ] Đặt `NODE_ENV=production`
+- [ ] Kiểm tra MongoDB Atlas IP whitelist (chỉ cho phép IP của server production)
+- [ ] Bật Cloudinary upload preset bảo mật

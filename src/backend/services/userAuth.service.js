@@ -17,6 +17,19 @@ function hashToken(token) {
   return crypto.createHash("sha256").update(token, "utf8").digest("hex");
 }
 
+export async function getUserSession(userId) {
+  const user = await User.findById(userId).select("fullName email isVerified").lean();
+  if (!user || !user.isVerified) {
+    throw serviceError(401, "Phiên đăng nhập không hợp lệ");
+  }
+  return {
+    id: user._id.toString(),
+    fullName: user.fullName,
+    email: user.email,
+    isVerified: user.isVerified,
+  };
+}
+
 export async function registerUser({ fullName, email, password }) {
   const normalizedEmail = email.trim().toLowerCase();
   if (await User.exists({ email: normalizedEmail })) {

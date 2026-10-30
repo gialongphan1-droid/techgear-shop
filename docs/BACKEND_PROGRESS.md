@@ -54,7 +54,7 @@ Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện đ�
 - `POST /api/cart/items`: Thêm sản phẩm vào giỏ (yêu cầu khách đăng nhập, email đã xác thực).
 - `GET /api/cart`: Xem giỏ hàng và tính tạm tính.
 - `POST /api/orders`: Tạo đơn hàng (yêu cầu khách đăng nhập, email đã xác thực). Bắt buộc có `idempotencyKey` (UUID). Tự động trừ kho và xóa giỏ.
-- `GET /api/orders/my-orders`: Xem lịch sử đơn hàng của khách đã đăng nhập; hỗ trợ `page` (mặc định 1), `limit` (mặc định 10, tối đa 100) và trả về `orderCode`, `createdAt`, `totalAmount`, `status`, `itemCount` cùng thông tin phân trang.
+- `GET /api/orders/my-orders`: Xem lịch sử đơn hàng của khách đã đăng nhập; hỗ trợ `page` (mặc định 1), `limit` (mặc định 10, tối đa 100) và trả về `orderCode`, `createdAt`, `totalAmount`, `status`, `itemCount`, tối đa 3 `previewItems` (tên, ảnh snapshot hoặc `null`, số lượng) cùng thông tin phân trang.
 - `POST /api/orders/track`: Tra cứu đơn hàng bằng `orderCode` và `trackCode`.
 
 ### 3.6. API Quản lý Tồn kho & Đơn hàng (Admin)
@@ -107,11 +107,19 @@ Hiện tại Database `techgear_shop` trên MongoDB Atlas đang hiển thị 5 c
 - **Cloudinary:** Đã cấu hình thành công (cloud_name: techgear). API upload ảnh đã hoạt động.
 
 ### 3.8. API Xác thực Khách hàng (User) & Thay đổi luồng mua hàng
+- **⚠️ Lưu ý:** Cookie xác thực khách hàng tên là `user_token` (HTTP-only). FE không được đọc bằng `document.cookie`, mà phải dùng Redux store hoặc gọi API `GET /api/auth/me`.
 - **Thay đổi nghiệp vụ:** Khách hàng bắt buộc phải Đăng nhập và Xác thực Email mới được thêm vào giỏ hàng và đặt đơn. Xem sản phẩm vẫn công khai.
 - **Các API mới:**
   - `POST /api/auth/register`: Đăng ký (gửi email xác thực).
   - `GET /api/auth/verify-email?token=...`: Xác thực tài khoản qua link trong email.
   - `POST /api/auth/login`: Đăng nhập, trả về JWT trong Cookie HTTP-only (role: 'customer') và `csrfToken`.
+  - `GET /api/auth/me`: Kiểm tra phiên đăng nhập hiện tại; yêu cầu cookie `user_token`, trả về thông tin hồ sơ khách hàng không bao gồm password hoặc token.
 - **Thay đổi API cũ:**
   - `POST /api/cart/items`, `GET /api/cart`, v.v. và `POST /api/orders`: Bắt buộc phải có Cookie đăng nhập của Customer. Trả lỗi `401` nếu chưa đăng nhập, `403` nếu chưa xác thực email.
   - Dữ liệu Giỏ hàng (Cart) và Đơn hàng (Order) giờ đã được gắn với `userId`.
+
+  ## 📊 Test Suite Status
+- **Ngày test:** 2026-10-31
+- **Kết quả:** 37/37 PASS
+- **Các nhóm:** Health, Admin Auth, Admin CRUD, Customer Auth, Cart & Order, My Orders, Security
+- **Lưu ý:** Rate limit đang tắt trong `.env` (`RATE_LIMIT_ENABLED=false`). Test Suite đã bật rate limit tạm qua preloader để test, không ảnh hưởng `.env`.

@@ -1,5 +1,6 @@
 import { validationResult } from "express-validator";
 import { createCsrfToken } from "../middleware/csrf.middleware.js";
+import { getUserSession } from "../services/userAuth.service.js";
 import {
   authenticateUser,
   registerUser,
@@ -29,6 +30,20 @@ function cookieOptions() {
     maxAge: 8 * 60 * 60 * 1000,
     path: "/",
   };
+}
+
+export async function getCurrentUser(req, res, next) {
+  try {
+    const user = await getUserSession(req.user.id);
+    return res.status(200).json({
+      success: true,
+      message: "Lấy thông tin khách hàng thành công",
+      data: { user },
+      errors: [],
+    });
+  } catch (error) {
+    return next(error);
+  }
 }
 
 export async function register(req, res, next) {

@@ -5,6 +5,7 @@ const { Schema } = mongoose;
 const orderItemSchema = new Schema({
   productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
   name: { type: String, required: true, trim: true, minlength: 2, maxlength: 100 },
+  image: { type: String, trim: true },
   sku: { type: String, trim: true, maxlength: 100 },
   price: { type: Number, required: true, min: 0 },
   quantity: { type: Number, required: true, min: 1, validate: { validator: Number.isInteger, message: "quantity phải là số nguyên" } },
