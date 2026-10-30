@@ -119,35 +119,44 @@ export default function HomePage() {
       </Helmet>
       <div>
       {banner && (
-        <section className="relative mx-auto max-w-[1440px] px-4 pt-5 sm:px-6 lg:px-8">
-          <div className="relative min-h-[300px] overflow-hidden rounded-3xl bg-slate-900 sm:min-h-[420px]">
-            <img
-              src={banner.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-65 transition duration-700"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/45 to-transparent" />
-            <Link
-              to={banner.linkUrl}
-              className="group relative flex min-h-[300px] max-w-2xl flex-col justify-center px-7 py-12 text-white sm:min-h-[420px] sm:px-14"
-              aria-label={banner.title}
-            >
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-orange-300 sm:text-sm">
-                Công nghệ cho mọi trải nghiệm
+        <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+          <div className="relative grid min-h-[420px] overflow-hidden rounded-xl bg-ink md:grid-cols-[1fr_0.92fr]">
+            <div className="flex flex-col items-start justify-center px-7 py-10 text-white sm:px-12 lg:px-16">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-300 sm:text-sm">
+                Thiết bị chọn lọc · Trải nghiệm vượt trội
               </p>
-              <h1 className="mt-4 text-3xl font-black leading-tight sm:text-5xl">
+              <h1 className="mt-5 max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
                 {banner.title}
               </h1>
-              <span className="mt-7 inline-flex w-fit items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold transition group-hover:bg-orange-500">
-                Khám phá sản phẩm <ArrowUpRight size={18} />
-              </span>
-            </Link>
+              <p className="mt-4 max-w-md text-sm leading-7 text-slate-300 sm:text-base">
+                Khám phá những lựa chọn công nghệ phù hợp cho công việc, học tập và giải trí.
+              </p>
+              <Link
+                to={banner.linkUrl}
+                className="group mt-8 inline-flex min-h-12 items-center gap-3 border-b border-brand-400 pb-1 text-sm font-semibold text-white transition-colors hover:text-brand-300"
+                aria-label={banner.title}
+              >
+                Khám phá bộ sưu tập
+                <ArrowUpRight size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+              </Link>
+            </div>
+            <div className="relative min-h-56 overflow-hidden bg-slate-800 md:min-h-full">
+              <img
+                src={banner.imageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-ink/10" />
+            </div>
             {banners.length > 1 && (
-              <div className="absolute bottom-5 right-5 z-10 flex gap-2 sm:bottom-8 sm:right-8">
+              <div className="absolute bottom-5 left-7 z-10 flex items-center gap-3 sm:left-12 lg:left-16">
+                <span className="text-xs font-medium tabular-nums text-slate-300">
+                  {String(activeBanner + 1).padStart(2, "0")} / {String(banners.length).padStart(2, "0")}
+                </span>
                 <button
                   type="button"
                   aria-label="Banner trước"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-slate-950/30 text-white hover:bg-slate-950/70"
+                  className="grid h-10 w-10 place-items-center rounded-md border border-white/20 text-white transition hover:border-white/50 hover:bg-white/10"
                   onClick={() =>
                     setActiveBanner((activeBanner - 1 + banners.length) % banners.length)
                   }
@@ -157,7 +166,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   aria-label="Banner tiếp theo"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-slate-950/30 text-white hover:bg-slate-950/70"
+                  className="grid h-10 w-10 place-items-center rounded-md border border-white/20 text-white transition hover:border-white/50 hover:bg-white/10"
                   onClick={() => setActiveBanner((activeBanner + 1) % banners.length)}
                 >
                   <ArrowRight size={18} />
@@ -168,36 +177,40 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
               Khám phá theo nhu cầu
             </p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
               Danh mục sản phẩm
             </h2>
           </div>
-          <Link to="/products" className="hidden text-sm font-bold text-orange-700 hover:text-orange-800 sm:inline">
+          <Link to="/products" className="hidden text-sm font-semibold text-brand-700 transition hover:text-brand-800 sm:inline">
             Tất cả danh mục
           </Link>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {categories.map((category) => (
             <Link
               key={category._id}
               to={`/products?category=${encodeURIComponent(category.slug)}`}
-              className="group relative min-h-36 overflow-hidden rounded-2xl bg-slate-900 p-4 text-white sm:min-h-44 sm:p-6"
+              className="group flex min-h-28 items-center gap-4 rounded-lg border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft sm:p-5"
             >
-              <img
-                src={category.iconUrl}
-                alt=""
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-cover opacity-45 transition group-hover:scale-105 group-hover:opacity-60"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 to-transparent" />
-              <span className="relative flex h-full min-h-28 items-end text-lg font-black sm:min-h-32">
-                {category.name}
+              <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-slate-50">
+                <img
+                  src={category.iconUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block font-semibold leading-5 text-ink">{category.name}</span>
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition group-hover:text-brand-700">
+                  Xem sản phẩm <ArrowUpRight size={13} />
+                </span>
               </span>
             </Link>
           ))}
@@ -221,31 +234,33 @@ export default function HomePage() {
 
 function ProductSection({ eyebrow, title, products }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-600">
-            {eyebrow}
+    <section className="border-t border-slate-200/70 bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
+              {eyebrow}
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              {title}
+            </h2>
+          </div>
+          <Link to="/products" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-700 transition hover:text-brand-800">
+            Xem tất cả <ArrowUpRight size={16} />
+          </Link>
+        </div>
+        {products.length ? (
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-8 border-y border-slate-200 py-8 text-center text-sm text-slate-600">
+            Chưa có sản phẩm trong danh mục này.
           </p>
-          <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
-            {title}
-          </h2>
-        </div>
-        <Link to="/products" className="text-sm font-bold text-orange-700 hover:text-orange-800">
-          Xem tất cả
-        </Link>
+        )}
       </div>
-      {products.length ? (
-        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
-      ) : (
-        <p className="mt-6 rounded-2xl bg-slate-50 p-8 text-center text-slate-600">
-          Chưa có sản phẩm trong danh mục này.
-        </p>
-      )}
     </section>
   );
 }

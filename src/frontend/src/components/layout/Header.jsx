@@ -2,16 +2,26 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   ChevronDown,
+  LogIn,
+  LogOut,
+  LoaderCircle,
   Menu,
   Scale,
   Search,
   ShoppingCart,
+  UserRound,
   X,
 } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { selectCartItemCount } from "../../store/cartSlice.js";
 import { selectCompareProducts } from "../../store/compareSlice.js";
+import { logoutCustomer } from "../../services/publicApi.js";
+import {
+  clearCustomerSession,
+  selectCustomerAuthStatus,
+  selectCustomerUser,
+} from "../../store/userAuthSlice.js";
 import Button from "../ui/Button.jsx";
 
 const categoryLinks = [
@@ -22,15 +32,19 @@ const categoryLinks = [
 ];
 
 const navLinkClass = ({ isActive }) =>
-  `text-sm font-semibold transition-colors hover:text-orange-600 ${
-    isActive ? "text-orange-600" : "text-slate-700"
+  `text-sm font-medium transition-colors hover:text-brand-700 ${
+    isActive ? "text-brand-700" : "text-slate-700"
   }`;
 
 export default function Header() {
+  const dispatch = useDispatch();
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const itemCount = useSelector(selectCartItemCount);
   const compareCount = useSelector(selectCompareProducts).length;
+  const customer = useSelector(selectCustomerUser);
+  const authStatus = useSelector(selectCustomerAuthStatus);
   const navigate = useNavigate();
   const {
     handleSubmit: handleDesktopSubmit,
@@ -55,14 +69,32 @@ export default function Header() {
     setMenuOpen(false);
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logoutCustomer();
+      dispatch(clearCustomerSession());
+      setMenuOpen(false);
+      navigate("/", { replace: true });
+    } catch (error) {
+      window.dispatchEvent(
+        new CustomEvent("app:toast", {
+          detail: error.response?.data?.message || "Không thể đăng xuất. Vui lòng thử lại.",
+        }),
+      );
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3.5 sm:gap-5 sm:px-6 lg:px-8">
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="md:hidden"
+          className="lg:hidden"
           aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
@@ -72,14 +104,14 @@ export default function Header() {
 
         <Link
           to="/"
-          className="shrink-0 text-xl font-black tracking-tight text-slate-950 sm:text-2xl"
+          className="shrink-0 text-xl font-extrabold tracking-[-0.06em] text-ink sm:text-2xl"
           aria-label="TechGear Shop - Trang chủ"
         >
-          TECH<span className="text-orange-600">GEAR</span>
+          TECH<span className="text-brand-600">GEAR</span>
         </Link>
 
         <form
-          className="hidden min-w-0 flex-1 md:block"
+          className="hidden min-w-0 flex-1 lg:block"
           role="search"
           onSubmit={handleDesktopSubmit(({ search }) => {
             submitSearch(search);
@@ -89,7 +121,7 @@ export default function Header() {
           <label className="sr-only" htmlFor="header-search">
             Tìm kiếm sản phẩm
           </label>
-          <div className="flex h-11 max-w-xl items-center rounded-xl border border-slate-200 bg-slate-50 px-3 transition focus-within:border-orange-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100">
+          <div className="flex h-11 max-w-xl items-center rounded-lg border border-slate-200 bg-slate-50/80 px-3 transition focus-within:border-brand-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100">
             <Search size={18} className="shrink-0 text-slate-400" />
             <input
               id="header-search"
@@ -108,7 +140,7 @@ export default function Header() {
           </div>
         </form>
 
-        <nav className="ml-auto hidden items-center gap-7 md:flex">
+        <nav className="ml-auto hidden items-center gap-7 lg:flex">
           <NavLink to="/" end className={navLinkClass}>
             Trang chủ
           </NavLink>
@@ -116,19 +148,19 @@ export default function Header() {
             <Button
               type="button"
               variant="ghost"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-slate-700 transition-colors hover:text-orange-600"
+              className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 transition-colors hover:text-brand-700"
               aria-expanded={categoriesOpen}
               onClick={() => setCategoriesOpen((open) => !open)}
             >
               Danh mục <ChevronDown size={16} />
             </Button>
             {categoriesOpen && (
-              <div className="absolute left-0 top-full mt-3 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+              <div className="absolute left-0 top-full mt-3 w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-lift">
                 {categoryLinks.map((category) => (
                   <Link
                     key={category}
                     to="/products"
-                    className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700"
+                    className="block rounded-md px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-50 hover:text-brand-700"
                     onClick={() => setCategoriesOpen(false)}
                   >
                     {category}
@@ -140,17 +172,52 @@ export default function Header() {
           <NavLink to="/products" className={navLinkClass}>
             Sản phẩm
           </NavLink>
-          <NavLink to="/track-order" className={navLinkClass}>
-            Tra cứu đơn
-          </NavLink>
+          {authStatus !== "checking" && (
+            <NavLink
+              to={customer ? "/my-orders" : "/track-order"}
+              className={navLinkClass}
+            >
+              {customer ? "Đơn hàng của tôi" : "Tra cứu đơn"}
+            </NavLink>
+          )}
           <NavLink to="/compare" className={navLinkClass}>
             So sánh
           </NavLink>
         </nav>
 
+        {customer ? (
+          <div className="hidden items-center gap-3 lg:flex">
+            <span className="inline-flex max-w-36 items-center gap-2 truncate text-sm font-medium text-slate-700" title={customer.fullName}>
+              <UserRound size={17} className="shrink-0 text-brand-700" />
+              {customer.fullName}
+            </span>
+            <button
+              type="button"
+              disabled={loggingOut}
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-brand-700 disabled:opacity-50"
+            >
+              {loggingOut ? (
+                <LoaderCircle size={16} className="animate-spin" />
+              ) : (
+                <LogOut size={16} />
+              )}
+              {loggingOut ? "Đang thoát..." : "Đăng xuất"}
+            </button>
+          </div>
+        ) : authStatus !== "checking" ? (
+          <Link
+            to="/login"
+            className="hidden items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-brand-700 lg:inline-flex"
+          >
+            <LogIn size={17} />
+            Đăng nhập
+          </Link>
+        ) : null}
+
         <Link
           to="/compare"
-          className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
+          className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
           aria-label={`So sánh, ${compareCount} sản phẩm`}
         >
           <Scale size={19} />
@@ -160,7 +227,7 @@ export default function Header() {
         </Link>
         <Link
           to="/cart"
-          className="relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 md:ml-0"
+          className="relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:ml-0"
           aria-label={`Giỏ hàng, ${itemCount} sản phẩm`}
         >
           <ShoppingCart size={19} />
@@ -171,9 +238,9 @@ export default function Header() {
       </div>
 
       {menuOpen && (
-        <div className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
+        <div className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden">
           <form
-            className="mb-4 flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3"
+            className="mb-4 flex h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3"
             role="search"
             onSubmit={handleMobileSubmit(({ mobileSearch }) => {
               submitSearch(mobileSearch);
@@ -195,12 +262,36 @@ export default function Header() {
               type="submit"
               variant="ghost"
               size="sm"
-              className="px-2 text-orange-600 hover:bg-transparent hover:text-orange-700"
+              className="px-2 text-brand-700 hover:bg-transparent hover:text-brand-800"
             >
               Tìm
             </Button>
           </form>
           <nav className="flex flex-col gap-1">
+            {customer ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-3">
+                <span className="min-w-0 truncate text-sm font-semibold text-ink">
+                  {customer.fullName}
+                </span>
+                <button
+                  type="button"
+                  disabled={loggingOut}
+                  onClick={handleLogout}
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-600 disabled:opacity-50"
+                >
+                  <LogOut size={14} />
+                  {loggingOut ? "Đang thoát" : "Đăng xuất"}
+                </button>
+              </div>
+            ) : authStatus !== "checking" ? (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+                onClick={() => setMenuOpen(false)}
+              >
+                <LogIn size={16} /> Đăng nhập
+              </Link>
+            ) : null}
             <NavLink
               to="/"
               end
@@ -217,11 +308,11 @@ export default function Header() {
               Tất cả sản phẩm
             </NavLink>
             <NavLink
-              to="/track-order"
+              to={customer ? "/my-orders" : "/track-order"}
               className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               onClick={() => setMenuOpen(false)}
             >
-              Tra cứu đơn hàng
+              {customer ? "Đơn hàng của tôi" : "Tra cứu đơn hàng"}
             </NavLink>
             <NavLink
               to="/compare"

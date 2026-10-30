@@ -1,27 +1,33 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
-import AdminLayout from "./components/layout/AdminLayout.jsx";
+import RequireCustomerAuth from "./components/auth/RequireCustomerAuth.jsx";
 import CustomerLayout from "./components/layout/CustomerLayout.jsx";
 import Button from "./components/ui/Button.jsx";
-import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
-import AdminBannerListPage from "./pages/admin/AdminBannerListPage.jsx";
-import AdminCategoryListPage from "./pages/admin/AdminCategoryListPage.jsx";
-import AdminDashboardPage from "./pages/admin/AdminDashboardPage.jsx";
-import AdminProductFormPage from "./pages/admin/AdminProductFormPage.jsx";
-import AdminProductListPage from "./pages/admin/AdminProductListPage.jsx";
-import AdminInventoryPage from "./pages/admin/AdminInventoryPage.jsx";
-import AdminOrderDetailPage from "./pages/admin/AdminOrderDetailPage.jsx";
-import AdminOrderListPage from "./pages/admin/AdminOrderListPage.jsx";
-import CartPage from "./pages/customer/CartPage.jsx";
-import CheckoutPage from "./pages/customer/CheckoutPage.jsx";
 import HomePage from "./pages/customer/HomePage.jsx";
-import OrderSuccessPage from "./pages/customer/OrderSuccessPage.jsx";
-import OrderTrackingPage from "./pages/customer/OrderTrackingPage.jsx";
-import ComparePage from "./pages/customer/ComparePage.jsx";
 import ProductDetailPage from "./pages/customer/ProductDetailPage.jsx";
 import ProductListPage from "./pages/customer/ProductListPage.jsx";
-import NotFoundPage from "./pages/NotFoundPage.jsx";
+
+const AdminLayout = lazy(() => import("./components/layout/AdminLayout.jsx"));
+const AdminLoginPage = lazy(() => import("./pages/admin/AdminLoginPage.jsx"));
+const AdminBannerListPage = lazy(() => import("./pages/admin/AdminBannerListPage.jsx"));
+const AdminCategoryListPage = lazy(() => import("./pages/admin/AdminCategoryListPage.jsx"));
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage.jsx"));
+const AdminProductFormPage = lazy(() => import("./pages/admin/AdminProductFormPage.jsx"));
+const AdminProductListPage = lazy(() => import("./pages/admin/AdminProductListPage.jsx"));
+const AdminInventoryPage = lazy(() => import("./pages/admin/AdminInventoryPage.jsx"));
+const AdminOrderDetailPage = lazy(() => import("./pages/admin/AdminOrderDetailPage.jsx"));
+const AdminOrderListPage = lazy(() => import("./pages/admin/AdminOrderListPage.jsx"));
+const CartPage = lazy(() => import("./pages/customer/CartPage.jsx"));
+const CheckoutPage = lazy(() => import("./pages/customer/CheckoutPage.jsx"));
+const LoginPage = lazy(() => import("./pages/customer/LoginPage.jsx"));
+const MyOrdersPage = lazy(() => import("./pages/customer/MyOrdersPage.jsx"));
+const OrderSuccessPage = lazy(() => import("./pages/customer/OrderSuccessPage.jsx"));
+const OrderTrackingPage = lazy(() => import("./pages/customer/OrderTrackingPage.jsx"));
+const ComparePage = lazy(() => import("./pages/customer/ComparePage.jsx"));
+const RegisterPage = lazy(() => import("./pages/customer/RegisterPage.jsx"));
+const VerifyEmailPage = lazy(() => import("./pages/customer/VerifyEmailPage.jsx"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
 
 function ApiNotice({ message, onDismiss }) {
   if (!message) return null;
@@ -41,6 +47,21 @@ function ApiNotice({ message, onDismiss }) {
       >
         Đóng
       </Button>
+    </div>
+  );
+}
+
+function RouteFallback() {
+  return (
+    <div
+      className="grid min-h-[50vh] place-items-center px-4 text-sm text-slate-600"
+      role="status"
+      aria-live="polite"
+    >
+      <span className="inline-flex items-center gap-3">
+        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-brand-600" />
+        Đang tải trang...
+      </span>
     </div>
   );
 }
@@ -74,32 +95,40 @@ export default function App() {
   return (
     <ErrorBoundary>
       <>
-        <Routes>
-          <Route element={<CustomerLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="products" element={<ProductListPage />} />
-            <Route path="products/:slug" element={<ProductDetailPage />} />
-            <Route path="cart" element={<CartPage />} />
-            <Route path="checkout" element={<CheckoutPage />} />
-            <Route path="order-success" element={<OrderSuccessPage />} />
-            <Route path="track-order" element={<OrderTrackingPage />} />
-            <Route path="compare" element={<ComparePage />} />
-          </Route>
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="products" element={<AdminProductListPage />} />
-            <Route path="products/new" element={<AdminProductFormPage />} />
-            <Route path="products/:id/edit" element={<AdminProductFormPage />} />
-            <Route path="categories" element={<AdminCategoryListPage />} />
-            <Route path="banners" element={<AdminBannerListPage />} />
-            <Route path="inventory" element={<AdminInventoryPage />} />
-            <Route path="orders" element={<AdminOrderListPage />} />
-            <Route path="orders/:id" element={<AdminOrderDetailPage />} />
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route element={<CustomerLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="login" element={<LoginPage />} />
+              <Route path="register" element={<RegisterPage />} />
+              <Route path="verify-email" element={<VerifyEmailPage />} />
+              <Route path="products" element={<ProductListPage />} />
+              <Route path="products/:slug" element={<ProductDetailPage />} />
+              <Route element={<RequireCustomerAuth />}>
+                <Route path="cart" element={<CartPage />} />
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="my-orders" element={<MyOrdersPage />} />
+              </Route>
+              <Route path="order-success" element={<OrderSuccessPage />} />
+              <Route path="track-order" element={<OrderTrackingPage />} />
+              <Route path="compare" element={<ComparePage />} />
+            </Route>
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="products" element={<AdminProductListPage />} />
+              <Route path="products/new" element={<AdminProductFormPage />} />
+              <Route path="products/:id/edit" element={<AdminProductFormPage />} />
+              <Route path="categories" element={<AdminCategoryListPage />} />
+              <Route path="banners" element={<AdminBannerListPage />} />
+              <Route path="inventory" element={<AdminInventoryPage />} />
+              <Route path="orders" element={<AdminOrderListPage />} />
+              <Route path="orders/:id" element={<AdminOrderDetailPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Route>
             <Route path="*" element={<NotFoundPage />} />
-          </Route>
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+          </Routes>
+        </Suspense>
         <ApiNotice message={apiNotice} onDismiss={() => setApiNotice("")} />
         {toast && (
           <div

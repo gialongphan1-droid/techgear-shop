@@ -1,8 +1,8 @@
 import { validationResult } from "express-validator";
 import { createCsrfToken } from "../middleware/csrf.middleware.js";
-import { getUserSession } from "../services/userAuth.service.js";
 import {
   authenticateUser,
+  getUserSession,
   registerUser,
   verifyUserEmail,
 } from "../services/userAuth.service.js";
@@ -38,7 +38,10 @@ export async function getCurrentUser(req, res, next) {
     return res.status(200).json({
       success: true,
       message: "Lấy thông tin khách hàng thành công",
-      data: { user },
+      data: {
+        user,
+        csrfToken: req.cookies?.[process.env.CSRF_COOKIE_NAME || "csrf_token"] || null,
+      },
       errors: [],
     });
   } catch (error) {
@@ -106,6 +109,29 @@ export async function login(req, res, next) {
       success: true,
       message: "Đăng nhập thành công",
       data: { user: result.user, csrfToken },
+      errors: [],
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export function logout(req, res, next) {
+  try {
+    const cookieOptions = {
+      secure: String(process.env.COOKIE_SECURE).toLowerCase() === "true",
+      sameSite: process.env.COOKIE_SAMESITE || "strict",
+      path: "/",
+    };
+    res.clearCookie(process.env.USER_COOKIE_NAME || "user_token", {
+      ...cookieOptions,
+      httpOnly: true,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Đăng xuất thành công",
+      data: {},
       errors: [],
     });
   } catch (error) {

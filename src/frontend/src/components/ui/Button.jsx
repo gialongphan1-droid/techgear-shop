@@ -1,8 +1,8 @@
 const variants = {
-  default: "bg-slate-950 text-white hover:bg-orange-600",
+  default: "bg-ink text-white shadow-sm hover:bg-brand-700 hover:shadow-soft",
   outline:
-    "border border-slate-200 bg-white text-slate-700 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600",
-  ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-950",
+    "border border-slate-200 bg-white text-slate-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700",
+  ghost: "text-slate-700 hover:bg-slate-100 hover:text-ink",
 };
 
 const sizes = {
@@ -21,7 +21,7 @@ export default function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     />
   );

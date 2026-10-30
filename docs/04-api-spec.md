@@ -33,6 +33,14 @@ Bảo mật: Yêu cầu Origin & CSRF Token cho các thao tác POST/PUT/DELETE. 
 - `GET /api/admin/me`: Kiểm tra phiên hợp lệ.
 - `POST /api/admin/logout`: Đăng xuất, xóa cookie.
 
+## 8.5.1. API Xác thực Khách hàng
+
+- `POST /api/auth/register`: Đăng ký bằng `{ fullName, email, password }` và gửi email xác thực.
+- `GET /api/auth/verify-email?token=...`: Xác thực email.
+- `POST /api/auth/login`: Đăng nhập bằng `{ email, password }`, trả cookie HTTP-only và CSRF token.
+- `GET /api/auth/me`: Kiểm tra phiên khách hàng, trả về thông tin user và CSRF token.
+- `POST /api/auth/logout`: Xóa cookie phiên và CSRF; yêu cầu Origin và CSRF hợp lệ.
+
 ## 8.6. API Quản lý Sản phẩm (Admin)
 
 Bảo mật: Mọi API từ 8.6 -> 8.10 yêu cầu JWT Token hợp lệ (Middleware phân quyền).

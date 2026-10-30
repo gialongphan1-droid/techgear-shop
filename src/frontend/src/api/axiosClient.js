@@ -1,6 +1,9 @@
 import axios, { AxiosHeaders } from "axios";
 import store from "../store/index.js";
 import { selectCsrfToken } from "../store/adminSessionSlice.js";
+import {
+  clearCustomerSession,
+} from "../store/userAuthSlice.js";
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
@@ -23,7 +26,10 @@ axiosClient.interceptors.request.use((config) => {
     config.headers = AxiosHeaders.from(config.headers);
     config.headers.set(
       "x-csrf-token",
-      selectCsrfToken(store.getState()) || getCsrfCookie() || "",
+      getCsrfCookie() ||
+        store.getState().userAuth.csrfToken ||
+        selectCsrfToken(store.getState()) ||
+        "",
     );
   }
 
@@ -34,22 +40,43 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
+    const requestUrl = error.config?.url || "";
+    const isCustomerAuthRequest = /^\/auth\/(login|register|verify-email)(\?|$)/.test(
+      requestUrl,
+    );
 
-    if (status === 401 && window.location.pathname.startsWith("/admin")) {
-      if (window.location.pathname !== "/admin/login") {
+    if (status === 401 && !error.config?.skipAuthRedirect && !isCustomerAuthRequest) {
+      if (window.location.pathname.startsWith("/admin")) {
+        if (window.location.pathname !== "/admin/login") {
+          const returnTo = encodeURIComponent(
+            `${window.location.pathname}${window.location.search}`,
+          );
+          window.location.assign(`/admin/login?returnTo=${returnTo}`);
+        }
+      } else if (!["/login", "/register", "/verify-email"].includes(window.location.pathname)) {
+        store.dispatch(clearCustomerSession());
         const returnTo = encodeURIComponent(
           `${window.location.pathname}${window.location.search}`,
         );
-        window.location.assign(`/admin/login?returnTo=${returnTo}`);
+        window.location.assign(`/login?returnTo=${returnTo}`);
       }
     }
 
     if (status === 403) {
-      window.dispatchEvent(
-        new CustomEvent("api:forbidden", {
-          detail: "Yêu cầu bị từ chối. Vui lòng kiểm tra phiên đăng nhập và thử lại.",
-        }),
-      );
+      const message = error.response?.data?.message || "";
+      if (/xác thực email/i.test(message)) {
+        window.dispatchEvent(
+          new CustomEvent("app:toast", {
+            detail: "Vui lòng xác thực email để tiếp tục mua hàng",
+          }),
+        );
+      } else {
+        window.dispatchEvent(
+          new CustomEvent("api:forbidden", {
+            detail: "Yêu cầu bị từ chối. Vui lòng kiểm tra phiên đăng nhập, CSRF hoặc Origin.",
+          }),
+        );
+      }
     }
 
     if (status === 429) {
