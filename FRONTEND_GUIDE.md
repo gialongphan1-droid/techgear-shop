@@ -23,6 +23,12 @@ Customer catalog, cart, checkout, and order tracking use live Backend APIs.
 Admin products, categories, banners, orders, and inventory use live Backend
 APIs. Redux cart state mirrors the server cart; it is not a local mock.
 
+Customer authentication uses `/login`, `/register`, and `/verify-email`.
+The session is checked through `GET /api/auth/me` after page load, login and
+registration use the Auth V2 APIs, and logout clears the HTTP-only session
+cookie through `POST /api/auth/logout`. Cart and checkout routes require an
+authenticated, email-verified customer.
+
 The Admin dashboard requests `GET /admin/dashboard` and displays the API error
 when the endpoint is unavailable. The endpoint is described in the API
 specification but is not listed as completed in `docs/BACKEND_PROGRESS.md` and
@@ -32,6 +38,7 @@ There are no mock fixtures or mock services used by the application. When
 Backend API contracts change, update the corresponding API adapters:
 
 - Customer APIs: `src/frontend/src/services/publicApi.js`
+- Customer authentication state: `src/frontend/src/store/userAuthSlice.js`
 - Customer response mapping: `src/frontend/src/services/storefrontService.js`
 - Admin APIs: `src/frontend/src/services/adminApi.js`
 - Shared credentials, Origin, and CSRF behavior:

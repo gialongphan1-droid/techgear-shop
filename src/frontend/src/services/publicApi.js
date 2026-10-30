@@ -1,5 +1,14 @@
 import axiosClient from "../api/axiosClient.js";
 
+export const registerCustomer = (payload) =>
+  axiosClient.post("/auth/register", payload);
+export const loginCustomer = (credentials) =>
+  axiosClient.post("/auth/login", credentials);
+export const verifyCustomerEmail = (token) =>
+  axiosClient.get("/auth/verify-email", { params: { token } });
+export const getCurrentCustomer = () =>
+  axiosClient.get("/auth/me", { skipAuthRedirect: true });
+export const logoutCustomer = () => axiosClient.post("/auth/logout");
 export const getPublicBanners = () => axiosClient.get("/banners");
 export const getPublicCategories = () => axiosClient.get("/categories");
 export const getPublicProducts = (params) =>

@@ -8,15 +8,15 @@ const shopLinks = [
 
 export default function Footer() {
   return (
-    <footer className="mt-auto bg-slate-950 text-slate-300">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-3 lg:px-8">
+    <footer className="mt-auto bg-ink text-slate-300">
+      <div className="mx-auto grid max-w-7xl gap-12 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_.8fr_1fr] lg:px-8">
         <div>
           <Link
             to="/"
-            className="text-xl font-black tracking-tight text-white"
+            className="text-xl font-extrabold tracking-[-0.06em] text-white"
             aria-label="TechGear Shop - Trang chủ"
           >
-            TECH<span className="text-orange-500">GEAR</span>
+            TECH<span className="text-brand-400">GEAR</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-6 text-slate-400">
             TechGear Shop - thiết bị công nghệ và linh kiện máy tính cho góc
@@ -31,7 +31,7 @@ export default function Footer() {
               <li key={link.to}>
                 <Link
                   to={link.to}
-                  className="transition-colors hover:text-orange-400"
+                  className="transition-colors hover:text-brand-300"
                 >
                   {link.label}
                 </Link>

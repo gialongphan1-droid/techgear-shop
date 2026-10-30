@@ -1,5 +1,6 @@
 import { validationResult } from "express-validator";
 import { createCsrfToken } from "../middleware/csrf.middleware.js";
+import User from "../models/User.js";
 import {
   authenticateUser,
   registerUser,
@@ -91,6 +92,52 @@ export async function login(req, res, next) {
       success: true,
       message: "Đăng nhập thành công",
       data: { user: result.user, csrfToken },
+      errors: [],
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getCurrentCustomer(req, res, next) {
+  try {
+    const user = await User.findById(req.user.id).select("fullName email isVerified");
+    if (!user) return failure(res, 401, "Phiên đăng nhập không hợp lệ");
+
+    return res.status(200).json({
+      success: true,
+      message: "Phiên đăng nhập hợp lệ",
+      data: {
+        user: {
+          id: user._id.toString(),
+          fullName: user.fullName,
+          email: user.email,
+        },
+        csrfToken: req.cookies?.[process.env.CSRF_COOKIE_NAME || "csrf_token"] || null,
+      },
+      errors: [],
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export function logout(req, res, next) {
+  try {
+    const cookieOptions = {
+      secure: String(process.env.COOKIE_SECURE).toLowerCase() === "true",
+      sameSite: process.env.COOKIE_SAMESITE || "strict",
+      path: "/",
+    };
+    res.clearCookie(process.env.USER_COOKIE_NAME || "user_token", {
+      ...cookieOptions,
+      httpOnly: true,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Đăng xuất thành công",
+      data: {},
       errors: [],
     });
   } catch (error) {

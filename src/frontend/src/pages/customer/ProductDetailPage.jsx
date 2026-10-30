@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { setCartData } from "../../store/cartSlice.js";
+import { selectCustomerUser } from "../../store/userAuthSlice.js";
 import { addCustomerCartItem, getCustomerCart } from "../../services/publicApi.js";
 import {
   addCompareProduct,
@@ -23,6 +24,7 @@ export default function ProductDetailPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const cartStatus = useSelector((state) => state.cart.status);
+  const customer = useSelector(selectCustomerUser);
   const compareProducts = useSelector(selectCompareProducts);
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -107,6 +109,13 @@ export default function ProductDetailPage() {
   const image = images[activeImage]?.url || images[0]?.url;
 
   const handleAddToCart = async () => {
+    if (!customer) {
+      navigate("/login", {
+        state: { returnTo: `/products/${product.slug}` },
+      });
+      return;
+    }
+
     try {
       const response = await addCustomerCartItem({
         productId: product._id,

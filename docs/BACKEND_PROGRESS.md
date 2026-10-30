@@ -111,6 +111,8 @@ Hiện tại Database `techgear_shop` trên MongoDB Atlas đang hiển thị 5 c
   - `POST /api/auth/register`: Đăng ký (gửi email xác thực).
   - `GET /api/auth/verify-email?token=...`: Xác thực tài khoản qua link trong email.
   - `POST /api/auth/login`: Đăng nhập, trả về JWT trong Cookie HTTP-only (role: 'customer') và `csrfToken`.
+  - `GET /api/auth/me`: Kiểm tra phiên khách hàng hiện tại và khôi phục thông tin user/CSRF token sau khi tải lại trang.
+  - `POST /api/auth/logout`: Xóa cookie phiên khách hàng và CSRF; yêu cầu Origin và CSRF hợp lệ.
 - **Thay đổi API cũ:**
   - `POST /api/cart/items`, `GET /api/cart`, v.v. và `POST /api/orders`: Bắt buộc phải có Cookie đăng nhập của Customer. Trả lỗi `401` nếu chưa đăng nhập, `403` nếu chưa xác thực email.
   - Dữ liệu Giỏ hàng (Cart) và Đơn hàng (Order) giờ đã được gắn với `userId`.

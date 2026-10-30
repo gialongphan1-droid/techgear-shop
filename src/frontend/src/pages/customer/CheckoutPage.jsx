@@ -10,7 +10,7 @@ import {
 import { clearCart, setCartData } from "../../store/cartSlice.js";
 
 const inputClass =
-  "mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100";
+  "mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", {
@@ -112,20 +112,20 @@ export default function CheckoutPage() {
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-9 sm:px-6 lg:px-8">
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-600">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">
           Hoàn tất đơn hàng
         </p>
-        <h1 className="mt-2 text-3xl font-black text-slate-950">Thông tin nhận hàng</h1>
-        <p className="mt-2 text-sm text-slate-600">
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Thông tin nhận hàng</h1>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
           Điền thông tin để cửa hàng liên hệ xác nhận đơn hàng.
         </p>
       </div>
 
-      <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <form
-          className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7"
+          className="space-y-5 border border-slate-200 bg-white p-5 sm:p-8"
           onSubmit={handleSubmit(onSubmit)}
           noValidate
         >
@@ -172,7 +172,7 @@ export default function CheckoutPage() {
               autoComplete="street-address"
               rows={3}
               aria-invalid={Boolean(errors.address)}
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+              className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               {...register("address", {
                 required: "Vui lòng nhập địa chỉ nhận hàng.",
                 minLength: { value: 5, message: "Địa chỉ cần ít nhất 5 ký tự." },
@@ -230,8 +230,8 @@ export default function CheckoutPage() {
           </div>
         </form>
 
-        <aside className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="text-lg font-black text-slate-950">Đơn hàng của bạn</h2>
+        <aside className="border border-slate-200 bg-white p-5 sm:p-6 lg:sticky lg:top-24">
+          <h2 className="text-lg font-semibold tracking-tight text-ink">Đơn hàng của bạn</h2>
           <ul className="mt-4 divide-y divide-slate-100">
             {items.map((item) => (
               <li key={item.productId} className="flex items-start justify-between gap-4 py-3">
@@ -251,7 +251,7 @@ export default function CheckoutPage() {
           </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="font-bold text-slate-900">Tạm tính</span>
-            <span className="text-xl font-black text-orange-700">{formatPrice(subtotal)}</span>
+            <span className="text-xl font-bold tracking-tight text-brand-700">{formatPrice(subtotal)}</span>
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
             * Phí vận chuyển sẽ được cửa hàng xác nhận khi liên hệ.

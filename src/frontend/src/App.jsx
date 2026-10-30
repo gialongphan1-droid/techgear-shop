@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Route, Routes } from "react-router-dom";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import RequireCustomerAuth from "./components/auth/RequireCustomerAuth.jsx";
 import AdminLayout from "./components/layout/AdminLayout.jsx";
 import CustomerLayout from "./components/layout/CustomerLayout.jsx";
 import Button from "./components/ui/Button.jsx";
@@ -16,9 +17,12 @@ import AdminOrderListPage from "./pages/admin/AdminOrderListPage.jsx";
 import CartPage from "./pages/customer/CartPage.jsx";
 import CheckoutPage from "./pages/customer/CheckoutPage.jsx";
 import HomePage from "./pages/customer/HomePage.jsx";
+import LoginPage from "./pages/customer/LoginPage.jsx";
 import OrderSuccessPage from "./pages/customer/OrderSuccessPage.jsx";
 import OrderTrackingPage from "./pages/customer/OrderTrackingPage.jsx";
 import ComparePage from "./pages/customer/ComparePage.jsx";
+import RegisterPage from "./pages/customer/RegisterPage.jsx";
+import VerifyEmailPage from "./pages/customer/VerifyEmailPage.jsx";
 import ProductDetailPage from "./pages/customer/ProductDetailPage.jsx";
 import ProductListPage from "./pages/customer/ProductListPage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
@@ -77,10 +81,15 @@ export default function App() {
         <Routes>
           <Route element={<CustomerLayout />}>
             <Route index element={<HomePage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="register" element={<RegisterPage />} />
+            <Route path="verify-email" element={<VerifyEmailPage />} />
             <Route path="products" element={<ProductListPage />} />
             <Route path="products/:slug" element={<ProductDetailPage />} />
-            <Route path="cart" element={<CartPage />} />
-            <Route path="checkout" element={<CheckoutPage />} />
+            <Route element={<RequireCustomerAuth />}>
+              <Route path="cart" element={<CartPage />} />
+              <Route path="checkout" element={<CheckoutPage />} />
+            </Route>
             <Route path="order-success" element={<OrderSuccessPage />} />
             <Route path="track-order" element={<OrderTrackingPage />} />
             <Route path="compare" element={<ComparePage />} />

@@ -8,7 +8,7 @@ import { loginAdmin } from "../../services/adminApi.js";
 import { setAdminSession } from "../../store/adminSessionSlice.js";
 
 const fieldClass =
-  "mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100";
+  "mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 export default function AdminLoginPage() {
   const dispatch = useDispatch();
@@ -42,15 +42,15 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-100 px-4 py-10">
-      <section className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-7 shadow-xl sm:p-9">
-        <Link to="/" className="text-xl font-black tracking-tight text-slate-950">
-          TECH<span className="text-orange-600">GEAR</span>
+    <main className="grid min-h-screen place-items-center bg-canvas px-4 py-10">
+      <section className="w-full max-w-md border border-slate-200 bg-white p-7 shadow-soft sm:p-10">
+        <Link to="/" className="text-xl font-extrabold tracking-[-0.06em] text-ink">
+          TECH<span className="text-brand-600">GEAR</span>
         </Link>
-        <p className="mt-7 text-sm font-bold uppercase tracking-[0.18em] text-orange-600">
+        <p className="mt-8 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
           Khu vực quản trị
         </p>
-        <h1 className="mt-2 text-3xl font-black text-slate-950">Đăng nhập Admin</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Đăng nhập Admin</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Đăng nhập để quản lý sản phẩm và cửa hàng.
         </p>
