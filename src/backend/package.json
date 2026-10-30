@@ -6,17 +6,19 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "start": "node --env-file=.env server.js",
+    "dev": "node --env-file=.env --watch server.js",
     "seed:admin": "node utils/seedAdmin.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:admin-upload": "node --env-file=.env test/adminUpload.test.js",
+    "test:cloudinary-ping": "node --env-file=.env test/test-ping.js"
   },
   "engines": {
     "node": ">=20.0.0"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
-    "cloudinary": "^2.6.1",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

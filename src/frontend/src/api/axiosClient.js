@@ -21,7 +21,6 @@ axiosClient.interceptors.request.use((config) => {
 
   if (isWriteRequest) {
     config.headers = AxiosHeaders.from(config.headers);
-    config.headers.set("Origin", "http://localhost:5173");
     config.headers.set(
       "x-csrf-token",
       selectCsrfToken(store.getState()) || getCsrfCookie() || "",

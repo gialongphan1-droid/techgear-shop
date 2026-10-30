@@ -34,7 +34,9 @@ export const getAdminDashboard = () => axiosClient.get("/admin/dashboard");
 export const uploadAdminImage = (file) => {
   const formData = new FormData();
   formData.append("image", file);
-  return axiosClient.post("/admin/upload", formData);
+  return axiosClient.post("/admin/upload", formData, {
+    withCredentials: true,
+  });
 };
 export const getAdminOrders = (params = {}) =>
   axiosClient.get("/admin/orders", { params });
