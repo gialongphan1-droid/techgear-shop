@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { ImagePlus, LoaderCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { createAdminCategory, deleteAdminCategory, getAdminCategories, updateAdminCategory } from "../../services/adminApi.js";
+import {
+  createAdminCategory,
+  deleteAdminCategory,
+  getAdminCategories,
+  updateAdminCategory,
+  uploadAdminImage,
+} from "../../services/adminApi.js";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100";
@@ -29,6 +35,17 @@ export default function AdminCategoryListPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [reload, setReload] = useState(0);
+  const [iconFile, setIconFile] = useState(null);
+  const [iconPreview, setIconPreview] = useState("");
+  const [iconError, setIconError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(
+    () => () => {
+      if (iconPreview) URL.revokeObjectURL(iconPreview);
+    },
+    [iconPreview],
+  );
 
   const {
     register,
@@ -69,6 +86,9 @@ export default function AdminCategoryListPage() {
     setEditingCategory(null);
     setFormOpen(true);
     setFormError("");
+    setIconFile(null);
+    setIconPreview("");
+    setIconError("");
     reset({ name: "", slug: "", description: "", isActive: true });
   };
 
@@ -76,6 +96,9 @@ export default function AdminCategoryListPage() {
     setEditingCategory(category);
     setFormOpen(true);
     setFormError("");
+    setIconFile(null);
+    setIconPreview("");
+    setIconError("");
     reset({
       name: category.name || "",
       slug: category.slug || "",
@@ -88,6 +111,33 @@ export default function AdminCategoryListPage() {
     if (isSubmitting) return;
     setFormOpen(false);
     setFormError("");
+    setIconFile(null);
+    setIconPreview("");
+    setIconError("");
+  };
+
+  const handleIconSelection = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    if (!allowedTypes.has(file.type)) {
+      setIconFile(null);
+      setIconPreview("");
+      setIconError("Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.");
+      return;
+    }
+    if (file.size === 0 || file.size > 5 * 1024 * 1024) {
+      setIconFile(null);
+      setIconPreview("");
+      setIconError("Ảnh phải có dung lượng lớn hơn 0 và không vượt quá 5MB.");
+      return;
+    }
+
+    setIconError("");
+    setIconFile(file);
+    setIconPreview(URL.createObjectURL(file));
   };
 
   const onSubmit = async (values) => {
@@ -100,6 +150,16 @@ export default function AdminCategoryListPage() {
     if (values.slug.trim()) payload.slug = values.slug.trim();
 
     try {
+      if (iconFile) {
+        setIsUploading(true);
+        try {
+          const uploadResponse = await uploadAdminImage(iconFile);
+          payload.iconUrl = uploadResponse.data.data.url;
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
       if (editingCategory) {
         await updateAdminCategory(editingCategory._id, payload);
         notify("Danh mục đã được cập nhật.");
@@ -108,6 +168,9 @@ export default function AdminCategoryListPage() {
         notify("Danh mục đã được tạo.");
       }
       setFormOpen(false);
+      setIconFile(null);
+      setIconPreview("");
+      setIconError("");
       setReload((current) => current + 1);
     } catch (error) {
       const fieldErrors = error.response?.data?.errors || [];
@@ -315,6 +378,11 @@ export default function AdminCategoryListPage() {
           errors={errors}
           isSubmitting={isSubmitting}
           formError={formError}
+          isUploading={isUploading}
+          iconPreview={iconPreview || editingCategory?.iconUrl || ""}
+          iconFileName={iconFile?.name || ""}
+          iconError={iconError}
+          onIconSelection={handleIconSelection}
           handleSubmit={handleSubmit}
           onSubmit={onSubmit}
           onClose={closeForm}
@@ -330,6 +398,11 @@ function CategoryFormModal({
   errors,
   isSubmitting,
   formError,
+  isUploading,
+  iconPreview,
+  iconFileName,
+  iconError,
+  onIconSelection,
   handleSubmit,
   onSubmit,
   onClose,
@@ -409,6 +482,38 @@ function CategoryFormModal({
             />
             {errors.description && <FieldError>{errors.description.message}</FieldError>}
           </label>
+          <div>
+            <label className="block text-sm font-semibold text-slate-700" htmlFor="category-icon">
+              Ảnh biểu tượng
+            </label>
+            <label
+              htmlFor="category-icon"
+              className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
+            >
+              <ImagePlus size={17} className="text-orange-600" />
+              Chọn ảnh từ thiết bị
+            </label>
+            <input
+              id="category-icon"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={onIconSelection}
+            />
+            {iconError && <FieldError>{iconError}</FieldError>}
+            {iconPreview && (
+              <div className="mt-3 flex items-center gap-3">
+                <img
+                  src={iconPreview}
+                  alt="Xem trước ảnh danh mục"
+                  className="h-16 w-16 rounded-lg border border-slate-200 bg-slate-50 object-cover"
+                />
+                <p className="text-xs leading-5 text-slate-500">
+                  {iconFileName ? `Ảnh mới: ${iconFileName}` : "Ảnh biểu tượng hiện tại"}
+                </p>
+              </div>
+            )}
+          </div>
           <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
             <input
               type="checkbox"
@@ -440,7 +545,7 @@ function CategoryFormModal({
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   <LoaderCircle size={16} className="animate-spin" />
-                  Đang lưu...
+                  {isUploading ? "Đang tải ảnh..." : "Đang lưu..."}
                 </span>
               ) : "Lưu danh mục"}
             </button>

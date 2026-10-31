@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Cpu } from "lucide-react";
 import { Link } from "react-router-dom";
 import ProductCard from "../../components/storefront/ProductCard.jsx";
 import {
@@ -141,10 +141,9 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="relative min-h-56 overflow-hidden bg-slate-800 md:min-h-full">
-              <img
-                src={banner.imageUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.02]"
+              <BannerArtwork
+                key={banner._id || banner.imageUrl || banner.title}
+                imageUrl={banner.imageUrl}
               />
               <div className="absolute inset-0 bg-ink/10" />
             </div>
@@ -198,14 +197,10 @@ export default function HomePage() {
               to={`/products?category=${encodeURIComponent(category.slug)}`}
               className="group flex min-h-28 items-center gap-4 rounded-lg border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft sm:p-5"
             >
-              <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-slate-50">
-                <img
-                  src={category.iconUrl}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                />
-              </span>
+              <CategoryArtwork
+                key={category._id || category.slug}
+                category={category}
+              />
               <span className="min-w-0">
                 <span className="block font-semibold leading-5 text-ink">{category.name}</span>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition group-hover:text-brand-700">
@@ -229,6 +224,61 @@ export default function HomePage() {
       />
       </div>
     </>
+  );
+}
+
+function BannerArtwork({ imageUrl }) {
+  const [failed, setFailed] = useState(!imageUrl);
+
+  if (failed) {
+    return (
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-800 text-slate-400"
+        aria-hidden="true"
+      >
+        <Cpu size={42} strokeWidth={1.2} />
+        <span className="text-xs font-semibold tracking-[0.2em] text-slate-300">
+          TECHGEAR
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt=""
+      className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.02]"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function CategoryArtwork({ category }) {
+  const [failed, setFailed] = useState(!category.iconUrl);
+  const initial = Array.from(category.name?.trim() || "?")[0].toLocaleUpperCase("vi");
+
+  if (failed) {
+    return (
+      <span
+        className="grid h-16 w-16 shrink-0 place-items-center rounded-md bg-brand-50 text-xl font-semibold text-brand-700 ring-1 ring-brand-100"
+        aria-hidden="true"
+      >
+        {initial}
+      </span>
+    );
+  }
+
+  return (
+    <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-slate-50">
+      <img
+        src={category.iconUrl}
+        alt=""
+        loading="lazy"
+        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+        onError={() => setFailed(true)}
+      />
+    </span>
   );
 }
 

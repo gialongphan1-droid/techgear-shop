@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   ChevronDown,
@@ -16,6 +16,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { selectCartItemCount } from "../../store/cartSlice.js";
 import { selectCompareProducts } from "../../store/compareSlice.js";
+import { getStorefrontCategories } from "../../services/storefrontService.js";
 import { logoutCustomer } from "../../services/publicApi.js";
 import {
   clearCustomerSession,
@@ -23,13 +24,6 @@ import {
   selectCustomerUser,
 } from "../../store/userAuthSlice.js";
 import Button from "../ui/Button.jsx";
-
-const categoryLinks = [
-  "Máy tính & Laptop",
-  "Linh kiện máy tính",
-  "Màn hình",
-  "Thiết bị ngoại vi",
-];
 
 const navLinkClass = ({ isActive }) =>
   `text-sm font-medium transition-colors hover:text-brand-700 ${
@@ -41,11 +35,32 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [categoryStatus, setCategoryStatus] = useState("loading");
   const itemCount = useSelector(selectCartItemCount);
   const compareCount = useSelector(selectCompareProducts).length;
   const customer = useSelector(selectCustomerUser);
   const authStatus = useSelector(selectCustomerAuthStatus);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+
+    getStorefrontCategories()
+      .then((response) => {
+        if (!active) return;
+        setCategories(response.data.items || []);
+        setCategoryStatus("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setCategoryStatus("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const {
     handleSubmit: handleDesktopSubmit,
     register: registerDesktop,
@@ -156,16 +171,24 @@ export default function Header() {
             </Button>
             {categoriesOpen && (
               <div className="absolute left-0 top-full mt-3 w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-lift">
-                {categoryLinks.map((category) => (
+                {categories.map((category) => (
                   <Link
-                    key={category}
-                    to="/products"
+                    key={category._id}
+                    to={`/products?category=${encodeURIComponent(category.slug)}`}
                     className="block rounded-md px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-50 hover:text-brand-700"
                     onClick={() => setCategoriesOpen(false)}
                   >
-                    {category}
+                    {category.name}
                   </Link>
                 ))}
+                {categoryStatus === "loading" && (
+                  <p className="px-3 py-2 text-sm text-slate-500">Đang tải danh mục...</p>
+                )}
+                {categoryStatus === "error" && (
+                  <p role="status" className="px-3 py-2 text-sm text-slate-500">
+                    Không thể tải danh mục.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -324,16 +347,24 @@ export default function Header() {
             <p className="px-3 pb-1 pt-3 text-xs font-bold uppercase tracking-wider text-slate-400">
               Danh mục
             </p>
-            {categoryLinks.map((category) => (
+            {categories.map((category) => (
               <Link
-                key={category}
-                to="/products"
+                key={category._id}
+                to={`/products?category=${encodeURIComponent(category.slug)}`}
                 className="rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
                 onClick={() => setMenuOpen(false)}
               >
-                {category}
+                {category.name}
               </Link>
             ))}
+            {categoryStatus === "loading" && (
+              <p className="px-3 py-2 text-sm text-slate-500">Đang tải danh mục...</p>
+            )}
+            {categoryStatus === "error" && (
+              <p role="status" className="px-3 py-2 text-sm text-slate-500">
+                Không thể tải danh mục.
+              </p>
+            )}
           </nav>
         </div>
       )}
