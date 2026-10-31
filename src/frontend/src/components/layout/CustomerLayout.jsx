@@ -28,7 +28,14 @@ export default function CustomerLayout() {
     let active = true;
     getCurrentCustomer()
       .then((response) => {
-        if (active) dispatch(setCustomerSession(response.data.data));
+        if (!active) return;
+        const session = response.data.data;
+        dispatch(
+          setCustomerSession({
+            user: session.user || session,
+            csrfToken: session.csrfToken,
+          }),
+        );
       })
       .catch((error) => {
         if (!active) return;

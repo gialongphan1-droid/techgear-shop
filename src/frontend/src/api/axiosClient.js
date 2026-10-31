@@ -64,10 +64,10 @@ axiosClient.interceptors.response.use(
 
     if (status === 403) {
       const message = error.response?.data?.message || "";
-      if (/xác thực email/i.test(message)) {
+      if (/xác thực email|chưa xác thực/i.test(message)) {
         window.dispatchEvent(
           new CustomEvent("app:toast", {
-            detail: "Vui lòng xác thực email để tiếp tục mua hàng",
+            detail: "Tài khoản chưa xác thực email",
           }),
         );
       } else {
@@ -82,7 +82,7 @@ axiosClient.interceptors.response.use(
     if (status === 429) {
       window.dispatchEvent(
         new CustomEvent("api:rate-limit", {
-          detail: "Yêu cầu quá nhanh. Vui lòng chờ trước khi thử lại.",
+          detail: "Quá nhiều yêu cầu, vui lòng thử lại sau",
         }),
       );
     }
