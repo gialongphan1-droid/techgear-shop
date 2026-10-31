@@ -112,6 +112,23 @@ export const trackOrderCodeRateLimiter = rateLimit({
   },
 });
 
+export const semanticSearchRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skip: isRateLimitDisabled,
+  keyGenerator: (req) => req.ip || "unknown",
+  handler: (_req, res) => {
+    return res.status(429).json({
+      success: false,
+      message: "Bạn đã tìm kiếm quá nhiều lần, vui lòng thử lại sau.",
+      data: {},
+      errors: [],
+    });
+  },
+});
+
 export const inventoryAdjustRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 30,

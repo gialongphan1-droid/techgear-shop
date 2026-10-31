@@ -18,6 +18,23 @@ function slugify(value) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+async function syncProductVector(product, remove = false) {
+  try {
+    const { deleteProductVector, upsertProductVector } = await import("./qdrantSync.service.js");
+    if (remove) {
+      const synced = await deleteProductVector(product._id.toString());
+      if (!synced) console.warn(`[Qdrant Sync] Delete was not confirmed for ${product._id}`);
+      return;
+    }
+
+    const category = await Category.findById(product.categoryId).select("name").lean();
+    const synced = await upsertProductVector(product, category?.name || null);
+    if (!synced) console.warn(`[Qdrant Sync] Upsert was not confirmed for ${product._id}`);
+  } catch (error) {
+    console.warn(`[Qdrant Sync] Could not synchronize product ${product._id}:`, error.message);
+  }
+}
+
 async function ensureCategory(categoryId) {
   if (!mongoose.isValidObjectId(categoryId)) throw serviceError(422, "categoryId không hợp lệ");
   const category = await Category.findById(categoryId).select("_id isActive");
@@ -74,6 +91,7 @@ export async function createProductAdmin(payload) {
   try {
     const created = await Product.create({ ...payload, slug });
     flushPublicProductCache();
+    await syncProductVector(created, created.status !== "ACTIVE");
     return created;
   } catch (error) {
     if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug sản phẩm đã tồn tại");
@@ -107,6 +125,11 @@ export async function updateProductAdmin(id, payload) {
   try {
     await product.save();
     flushPublicProductCache();
+    if (product.status !== "ACTIVE") {
+      await syncProductVector(product, true);
+    } else {
+      await syncProductVector(product);
+    }
     return product;
   } catch (error) {
     if (error?.code === 11000) throw serviceError(409, "Tên hoặc slug sản phẩm đã tồn tại");
@@ -119,6 +142,7 @@ export async function updateProductStatusAdmin(id, status) {
   const product = await Product.findByIdAndUpdate(id, { $set: { status } }, { new: true, runValidators: true });
   if (!product) throw serviceError(404, "Sản phẩm không tồn tại");
   flushPublicProductCache();
+  await syncProductVector(product, product.status !== "ACTIVE");
   return product;
 }
 
@@ -132,11 +156,13 @@ export async function deleteProductAdmin(id) {
     product.status = "INACTIVE";
     await product.save();
     flushPublicProductCache();
+    await syncProductVector(product, true);
     return { action: "inactive", product };
   }
 
   await Product.deleteOne({ _id: product._id });
   flushPublicProductCache();
+  await syncProductVector(product, true);
 
   if (cloudinary.config().cloud_name && product.images?.length) {
     await Promise.allSettled(product.images.map((image) => image.publicId ? cloudinary.uploader.destroy(image.publicId) : null));

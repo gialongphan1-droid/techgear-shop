@@ -1,126 +1,225 @@
-# BÁO CÁO TIẾN ĐỘ & BÀN GIAO API BACKEND (TECHGEAR SHOP)
+# Báo cáo tiến độ & API Backend (TechGear Shop)
 
-Tài liệu này ghi lại trạng thái các API Backend đã hoàn thiện để đội ngũ Frontend (FE) có thể bắt đầu tích hợp.
+**Cập nhật lần cuối:** 2026-11-01
+**Trạng thái:** Backend V1 + Vector Search hoàn thiện
 
-## 1. THÔNG TIN MÔI TRƯỜNG (Environment)
+## 1. Thông tin môi trường
 
-- **Base URL:** `http://localhost:5000/api`
-- **Cơ chế xác thực:** Admin và khách hàng dùng JWT trong Cookie HTTP-only (`admin_token`, `user_token`).
-- **Cloudinary Upload:** Bổ sung `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` và `CLOUDINARY_UPLOAD_FOLDER=techgear/uploads` trong `src/backend/.env`.
-- **Bảo mật CSRF:** Mọi request ghi (POST, PUT, PATCH, DELETE) yêu cầu Header `x-csrf-token`. (Lấy mã này từ response của API Đăng nhập).
-- **Bắt buộc Header:** `Origin: http://localhost:5173` (để vượt qua CORS).
-- **Định dạng Response chung:**
+- **Base URL (local):** `http://localhost:5000/api`
+- **Port:** `5000`
+- **Database:** MongoDB Atlas
+- **Vector DB:** Qdrant Cloud
+- **Tài khoản Admin mẫu:** Dùng tài khoản được cấu hình trong môi trường phát triển. Không lưu mật khẩu trong tài liệu hoặc mã nguồn.
+
+## 2. Quy tắc bảo mật cho Frontend
+
+- **Cookie Admin:** `admin_token` (HTTP-only, Secure, SameSite=strict trong production).
+- **Cookie Customer:** `user_token` (HTTP-only, Secure, SameSite=strict trong production).
+- **CSRF:** Mọi request ghi (`POST`, `PUT`, `PATCH`, `DELETE`) cần Header `x-csrf-token`, lấy từ response đăng nhập.
+- **CORS:** Local chỉ chấp nhận Origin đã cấu hình, mặc định `http://localhost:5173`. Production cần thay bằng domain thật.
+- **Format response chuẩn:**
+
   ```json
-  { "success": boolean, "message": "string", "data": {}, "errors": [] }
-  ## 3. DANH SÁCH CÁC API ĐÃ HOÀN THIỆN
-  *(Dành cho Frontend tích hợp ngay)*
+  {
+    "success": true,
+    "message": "string",
+    "data": {},
+    "errors": []
+  }
   ```
 
-### 3.1. API Xác thực (Auth)
+- Cookie là HTTP-only; FE không đọc bằng JavaScript. Dùng Redux store hoặc gọi `GET /api/auth/me` / `GET /api/admin/me` để khôi phục trạng thái đăng nhập.
 
-- **`POST /admin/login`**: Đăng nhập.
-  - _Body:_ `{ "email": "...", "password": "..." }`
-  - _Trả về:_ Thông tin Admin và `csrfToken`.
-- **`POST /admin/logout`**: Đăng xuất, xóa cookie.
-- **`GET /admin/me`**: Kiểm tra phiên đăng nhập hiện tại (dùng khi F5 tải lại trang).
+## 3. Danh sách API đã hoàn thiện
 
-### 3.2. API Quản lý Sản phẩm (Admin)
+### 3.1. Auth Admin
 
-- **`GET /admin/products`**: Lấy danh sách sản phẩm (có phân trang, lọc).
-- **`GET /admin/products/:id`**: Lấy chi tiết 1 sản phẩm.
-- **`POST /admin/products`**: Tạo sản phẩm mới.
-- **`PUT /admin/products/:id`**: Cập nhật sản phẩm.
-  - _(Lưu ý: Nếu gửi trường `stock` lên sẽ bị lỗi 422 - Hệ thống chặn sửa tồn kho trực tiếp để bảo vệ dữ liệu)._
-- **`PATCH /admin/products/:id/status`**: Cập nhật trạng thái bán (ACTIVE, INACTIVE, PAUSED).
-- **`DELETE /admin/products/:id`**: Xóa sản phẩm.
-  - _(Nếu sản phẩm đã từng nằm trong đơn hàng, API sẽ tự động chuyển trạng thái thành INACTIVE thay vì xóa vĩnh viễn)._
+- `POST /api/admin/login` — Body: `{ "email": "...", "password": "..." }`. Trả `csrfToken` và cookie `admin_token`.
+- `POST /api/admin/logout` — Đăng xuất.
+- `GET /api/admin/me` — Kiểm tra phiên hiện tại.
 
-### 3.3. API Quản lý Danh mục (Admin)
+### 3.2. Auth Customer
 
-- **`GET /admin/categories`**: Danh sách danh mục.
-- **`POST /admin/categories`**: Tạo danh mục mới.
-- **`PUT /admin/categories/:id`**: Sửa danh mục.
-- **`DELETE /admin/categories/:id`**: Xóa danh mục.
-  - _(Trả về lỗi 409 Conflict nếu danh mục đang chứa sản phẩm)._
+- `POST /api/auth/register` — Body: `{ "fullName": "...", "email": "...", "password": "..." }`. Gửi email xác thực.
+- `GET /api/auth/verify-email?token=...` — Xác thực tài khoản.
+- `POST /api/auth/login` — Trả `csrfToken` và cookie `user_token`.
+- `GET /api/auth/me` — Trả hồ sơ `{ id, fullName, email, isVerified }`, không trả password hoặc token.
+- `POST /api/auth/logout` — Đăng xuất.
 
-### 3.4. API Quản lý Banner (Admin)
+### 3.3. Sản phẩm công khai
 
-- **`GET /admin/banners`**: Danh sách banner.
-- **`POST /admin/banners`**: Tạo banner mới.
-- **`PUT /admin/banners/:id`**: Sửa banner.
-- **`DELETE /admin/banners/:id`**: Xóa banner.
+- `GET /api/products` — Danh sách sản phẩm ACTIVE. Query hỗ trợ `page`, `limit`, `category` (ObjectId hoặc slug), `brand`, `minPrice`, `maxPrice`, `sort`, `search`. Cache 60 giây.
+  - Pagination: `{ page, limit, total, totalPages, hasNextPage }`.
+  - Ví dụ lọc danh mục: `?category=6ae23347b4eb8261ae02ac15` hoặc `?category=chuot-may-tinh`.
+- `GET /api/products/:slug` — Chi tiết sản phẩm ACTIVE.
+- `GET /api/products/semantic-search` — Tìm kiếm ngữ nghĩa.
+  - Query: `q` (tối thiểu 2 ký tự), `limit` (mặc định 10, tối đa 100).
+  - Chỉ trả kết quả có `similarityScore >= SEMANTIC_SEARCH_THRESHOLD` (mặc định `0.82`).
+  - Cache 5 phút; key gồm query, limit và threshold.
+  - Không có kết quả đạt ngưỡng thì trả `items: []`, `total: 0`.
+  - Ví dụ response:
 
-### 3.5. API Giỏ hàng & Đơn hàng (Khách hàng)
-- `POST /api/cart/items`: Thêm sản phẩm vào giỏ (yêu cầu khách đăng nhập, email đã xác thực).
-- `GET /api/cart`: Xem giỏ hàng và tính tạm tính.
-- `POST /api/orders`: Tạo đơn hàng (yêu cầu khách đăng nhập, email đã xác thực). Bắt buộc có `idempotencyKey` (UUID). Tự động trừ kho và xóa giỏ.
-- `GET /api/orders/my-orders`: Xem lịch sử đơn hàng của khách đã đăng nhập; hỗ trợ `page` (mặc định 1), `limit` (mặc định 10, tối đa 100) và trả về `orderCode`, `createdAt`, `totalAmount`, `status`, `itemCount`, tối đa 3 `previewItems` (tên, ảnh snapshot hoặc `null`, số lượng) cùng thông tin phân trang.
-- `POST /api/orders/track`: Tra cứu đơn hàng bằng `orderCode` và `trackCode`.
+    ```json
+    {
+      "success": true,
+      "message": "Tìm kiếm ngữ nghĩa thành công",
+      "data": {
+        "query": "đồ chơi game",
+        "items": [
+          {
+            "_id": "...",
+            "name": "Chuột Logitech...",
+            "similarityScore": 0.84
+          }
+        ],
+        "total": 1
+      },
+      "errors": []
+    }
+    ```
 
-### 3.6. API Quản lý Tồn kho & Đơn hàng (Admin)
+- `GET /api/products/:id/similar` — Gợi ý sản phẩm tương tự.
+  - Query hiện tại không nhận `limit`; service mặc định trả tối đa 5 sản phẩm.
+  - Loại trừ sản phẩm đang xem; cache 5 phút theo product ID và limit.
+  - Response data: `{ "items": [], "total": 0 }`.
 
-- `GET /api/admin/inventory`: Xem danh sách tồn kho.
-- `POST /api/admin/inventory/adjust`: Điều chỉnh tồn kho (ghi log InventoryLog).
-- `GET /api/admin/orders`: Danh sách đơn hàng.
-- `PATCH /api/admin/orders/:id/status`: Cập nhật trạng thái đơn (tự động hoàn kho nếu hủy).
+### 3.4. Danh mục & Banner công khai
 
-### 3.7. API Dashboard & Upload ảnh (Admin)
+- `GET /api/categories` — Chỉ trả danh mục đang bật.
+- `GET /api/banners` — Chỉ trả banner đang bật.
 
-- `GET /api/admin/dashboard`: Lấy thống kê Dashboard (yêu cầu quyền Admin).
-  - Trả về `totalProducts`, `totalCategories`, `pendingOrders`, `completedOrders` và `totalRevenue`.
-  - Doanh thu chỉ tính các đơn có trạng thái `COMPLETED`.
-- `POST /api/admin/upload`: Upload ảnh bằng `multipart/form-data` (yêu cầu quyền Admin, Origin và CSRF token).
-  - Field được hỗ trợ: `image` hoặc `file`.
-  - Chỉ hỗ trợ JPEG, PNG, WEBP hoặc GIF, dung lượng tối đa 5MB.
-  - Trả về `{ url, publicId }` để Frontend lưu vào dữ liệu sản phẩm/banner.
+### 3.5. Giỏ hàng (yêu cầu `user_token`)
 
----
+- `POST /api/cart/items` — Body: `{ "productId": "...", "quantity": 1 }`.
+- `GET /api/cart`
+- `PUT /api/cart/items/:productId` — Body: `{ "quantity": 1 }`.
+- `DELETE /api/cart/items/:productId`
+- `DELETE /api/cart`
 
-## 4. TRẠNG THÁI CƠ SỞ DỮ LIỆU
+### 3.6. Đơn hàng khách hàng (yêu cầu `user_token`)
 
-Hiện tại Database `techgear_shop` trên MongoDB Atlas đang hiển thị 5 collections: `admins`, `categories`, `products`, `banners`, `orders`.
+- `POST /api/orders` — Body gồm `customerInfo`, `idempotencyKey`, `clientTotal`. Tự động trừ kho và xóa giỏ.
+  - Snapshot `items` gồm `productId`, `name`, `sku`, `price`, `quantity`, `subtotal`, `image`.
+- `POST /api/orders/track` — Body: `{ "orderCode": "...", "trackCode": "..." }`. Tra cứu ẩn danh.
+- `GET /api/orders/my-orders` — Query: `page`, `limit`.
+  - Trả `orderCode`, `createdAt`, `totalAmount`, `status`, `itemCount`, tối đa 3 `previewItems` và pagination.
+  - `previewItems` gồm `{ "name": "...", "image": "https://...", "quantity": 1 }`.
+  - Đơn được tạo trước khi snapshot ảnh được bổ sung có thể trả `image: null`; FE cần dùng placeholder.
 
-> **Lưu ý:** Các collection như `carts`, `inventorylogs`, `orderhistories` đã được viết Model nhưng chưa xuất hiện trên Database. Đây là do cơ chế "Lazy Creation" của MongoDB (chỉ tạo bảng khi có dữ liệu đầu tiên được chèn vào). Chúng sẽ tự động xuất hiện khi FE test các tính năng Giỏ hàng và Đặt hàng.
+### 3.7. Quản lý Admin (yêu cầu `admin_token` và CSRF)
 
----
+- `GET/POST/PUT/DELETE /api/admin/products/*` — CRUD sản phẩm.
+  - API update từ chối trường `stock` (BR-INV-13).
+  - Tạo/sửa sản phẩm ACTIVE sẽ đồng bộ vector lên Qdrant.
+  - Đổi trạng thái sang INACTIVE/PAUSED hoặc xóa sản phẩm sẽ xóa vector tương ứng.
+- `PATCH /api/admin/products/:id/status` — Đổi trạng thái bán và đồng bộ Qdrant.
+- `GET/POST/PUT/DELETE /api/admin/categories/*` — CRUD danh mục; xóa trả `409` nếu danh mục còn sản phẩm.
+- `GET/POST/PUT/DELETE /api/admin/banners/*` — CRUD banner.
+- `POST /api/admin/upload` — Upload ảnh Cloudinary bằng multipart (`image` hoặc `file`), tối đa 5 MB.
+- `GET /api/admin/inventory` — Danh sách tồn kho.
+- `POST /api/admin/inventory/adjust` — Body: `{ "productId": "...", "type": "...", "quantity": 1, "reason": "..." }`; ghi log `InventoryLog`.
+- `GET /api/admin/orders` — Danh sách đơn hàng, hỗ trợ lọc trạng thái.
+- `GET /api/admin/orders/:id` — Chi tiết đơn hàng.
+- `PATCH /api/admin/orders/:id/status` — Cập nhật trạng thái theo ma trận; tự động hoàn kho nếu hủy.
+- `GET /api/admin/dashboard` — Thống kê sản phẩm, danh mục, đơn chờ, đơn hoàn thành và doanh thu. Doanh thu chỉ tính đơn `COMPLETED`.
 
-## 6. HƯỚNG DẪN TÍCH HỢP CHO FRONTEND
+### 3.8. Health
 
-1. Cấu hình Axios với `withCredentials: true` để trình duyệt tự động gửi/nhận cookie.
-2. Tạo Interceptor xử lý lỗi: Nếu nhận mã `401` thì đá về trang đăng nhập; nếu `403` thì hiển thị thông báo lỗi CSRF/Origin.
-3. Với các API ghi (Thêm/Sửa/Xóa), bắt buộc phải đính kèm `x-csrf-token` và `Origin` vào Headers.
-4. Tạm thời dùng Mock Data cho các tính năng Giỏ hàng/Đặt hàng cho đến khi Backend thông báo hoàn thiện.
+- `GET /api/health` — Kiểm tra trạng thái API.
 
-### 3.7. Các tính năng hạ tầng & Tối ưu hóa (Mới cập nhật)
-- **Rate Limiter:** Đã cấu hình lại với các giới hạn:
-  - Global API: 300 req / 15 phút.
-  - Admin Login: 5 req / 15 phút.
-  - Tạo đơn: 3 req / phút.
-  - Tra cứu đơn: 5 req / phút.
-  - Có thể tắt qua biến `RATE_LIMIT_ENABLED=false` trong file `.env` khi dev.
-- **Tối ưu hóa hiệu năng API `GET /api/products`:**
-  - Đã thêm Index cho `status` và `categoryId`.
-  - Đã dùng `.lean()` cho query.
-  - Đã tích hợp **In-memory Cache (node-cache)** với TTL 60 giây.
-  - Phân trang dùng `limit + 1` thay vì `countDocuments()`.
-  - Kết quả: Tốc độ đạt >1.100 req/s (tăng 47 lần), độ trễ < 100ms.
-- **Cloudinary:** Đã cấu hình thành công (cloud_name: techgear). API upload ảnh đã hoạt động.
+## 4. Trạng thái Database
 
-### 3.8. API Xác thực Khách hàng (User) & Thay đổi luồng mua hàng
-- **⚠️ Lưu ý:** Cookie xác thực khách hàng tên là `user_token` (HTTP-only). FE không được đọc bằng `document.cookie`, mà phải dùng Redux store hoặc gọi API `GET /api/auth/me`.
-- **Thay đổi nghiệp vụ:** Khách hàng bắt buộc phải Đăng nhập và Xác thực Email mới được thêm vào giỏ hàng và đặt đơn. Xem sản phẩm vẫn công khai.
-- **Các API mới:**
-  - `POST /api/auth/register`: Đăng ký (gửi email xác thực).
-  - `GET /api/auth/verify-email?token=...`: Xác thực tài khoản qua link trong email.
-  - `POST /api/auth/login`: Đăng nhập, trả về JWT trong Cookie HTTP-only (role: 'customer') và `csrfToken`.
-  - `GET /api/auth/me`: Kiểm tra phiên khách hàng hiện tại và khôi phục thông tin user/CSRF token sau khi tải lại trang; trả hồ sơ không bao gồm password hoặc token.
-  - `POST /api/auth/logout`: Xóa cookie phiên khách hàng và CSRF; yêu cầu Origin và CSRF hợp lệ.
-- **Thay đổi API cũ:**
-  - `POST /api/cart/items`, `GET /api/cart`, v.v. và `POST /api/orders`: Bắt buộc phải có Cookie đăng nhập của Customer. Trả lỗi `401` nếu chưa đăng nhập, `403` nếu chưa xác thực email.
-  - Dữ liệu Giỏ hàng (Cart) và Đơn hàng (Order) giờ đã được gắn với `userId`.
+Các collections chính:
 
-  ## 📊 Test Suite Status
-- **Ngày test:** 2026-10-31
-- **Kết quả:** 37/37 PASS
-- **Các nhóm:** Health, Admin Auth, Admin CRUD, Customer Auth, Cart & Order, My Orders, Security
-- **Lưu ý:** Rate limit đang tắt trong `.env` (`RATE_LIMIT_ENABLED=false`). Test Suite đã bật rate limit tạm qua preloader để test, không ảnh hưởng `.env`.
+- `admins`, `users`, `categories`, `products`, `banners`
+- `carts`, `orders`, `inventorylogs`, `orderhistories`
+
+Indexes chính:
+
+- **Product:** `{ status: 1, categoryId: 1 }`, slug.
+- **Order:** `userId`, unique `orderCode`.
+- **User:** unique `email`.
+
+## 5. Rate limiter
+
+Cấu hình trong `src/backend/middleware/rateLimit.middleware.js`:
+
+- Global API: 300 request / 15 phút.
+- Admin Login: 5 request / 15 phút.
+- Tạo đơn: 3 request / phút.
+- Tra cứu đơn: 5 request / phút.
+- Semantic Search: 30 request / phút.
+- Có thể tắt tạm khi phát triển bằng `RATE_LIMIT_ENABLED=false`.
+
+## 6. Cache
+
+- `GET /api/products`: TTL 60 giây.
+- Semantic search: TTL 5 phút; cache key gồm query, limit, threshold.
+- Similar products: TTL 5 phút; cache key gồm product ID và limit.
+- Cache danh sách sản phẩm công khai được xóa khi Admin thay đổi sản phẩm.
+
+## 7. Vector Search & Qdrant Cloud
+
+**Model embedding:** `onnx-community/granite-embedding-311m-multilingual-r2-ONNX`
+
+- Vector dimensions: **768**
+- Pooling: `cls`
+- Không thêm instruction prefix.
+- Quantized: q8.
+
+**Qdrant Cloud:**
+
+- Collection: `techgear_products`
+- Distance: Cosine.
+- Payload indexes: `productId` (keyword), `name` (text).
+
+**Luồng đồng bộ:**
+
+- Admin tạo/sửa sản phẩm ACTIVE → `upsertProductVector()` (embed và upsert Qdrant).
+- Admin đổi trạng thái sang INACTIVE/PAUSED hoặc xóa → `deleteProductVector()`.
+- Lỗi Qdrant không chặn CRUD MongoDB; lỗi được log.
+
+**Scripts:**
+
+- `npm run index:products` — Index toàn bộ sản phẩm ACTIVE vào Qdrant.
+- `node scripts/test-qdrant-connection.js` — Kiểm tra kết nối và collection.
+- `node scripts/test-qdrant-sync.js` — Kiểm tra upsert/delete vector.
+- `node scripts/test-similar.js` — Kiểm tra API service gợi ý sản phẩm tương tự.
+
+**Biến môi trường:**
+
+```env
+QDRANT_URL=https://<cluster>.aws.cloud.qdrant.io
+QDRANT_API_KEY=<api-key>
+QDRANT_COLLECTION=techgear_products
+ENABLE_SEMANTIC_SEARCH=true
+SEMANTIC_SEARCH_THRESHOLD=0.82
+EMBEDDING_MODEL=onnx-community/granite-embedding-311m-multilingual-r2-ONNX
+EMBEDDING_DIMENSION=768
+```
+
+## 8. Test Suite
+
+- Backend Test Suite: **37/37 PASS** (2026-10-31).
+- Semantic Search: **5/5 PASS** (query VI/EN, validation, cache, threshold).
+- Similar Products: **4/4 PASS**.
+- Qdrant Sync: đã xác minh luồng upsert/delete qua CRUD.
+- E2E Playwright: cần cập nhật luồng đăng nhập trước khi đặt hàng và bổ sung test semantic search/similar.
+
+## 9. Việc còn lại
+
+- [ ] Cập nhật E2E Playwright cho luồng mới (login → semantic search → similar).
+- [ ] FE tích hợp semantic search và khối sản phẩm tương tự.
+- [ ] Hoàn thiện Admin Dashboard nếu FE yêu cầu.
+- [ ] Deploy production (Vercel + Render + MongoDB Atlas + Qdrant Cloud + Cloudinary).
+- [ ] Xoay vòng các API keys đã được chia sẻ trong quá trình phát triển (Qdrant, Cohere, Cloudinary).
+
+## 10. Lưu ý khi deploy
+
+Xem checklist chi tiết trong `README.md`. Tóm tắt:
+
+- Đặt `NODE_ENV=production`, `RATE_LIMIT_ENABLED=true`, `COOKIE_SECURE=true`.
+- Cập nhật `CLIENT_ORIGINS` thành domain production.
+- Cấu hình MongoDB Atlas IP access list theo hạ tầng production; tránh mở toàn mạng nếu không cần thiết.
+- Kiểm tra Qdrant Cloud network access, Cloudinary credentials và email credentials.
+- Đảm bảo secrets được lưu trong secret manager/environment variables, không commit vào repository.

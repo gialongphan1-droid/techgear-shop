@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import Category from "../../models/Category.js";
 import Product from "../../models/Product.js";
 import myCache from "../../utils/cache.js";
@@ -40,7 +39,14 @@ export async function listPublicProducts(query = {}) {
   ].join("_");
 
   const cached = myCache.get(cacheKey);
-  if (cached) return cached;
+  if (
+    cached?.pagination
+    && Number.isFinite(cached.pagination.total)
+    && Number.isFinite(cached.pagination.totalPages)
+  ) {
+    return cached;
+  }
+  if (cached) myCache.del(cacheKey);
 
   const filter = { status: "ACTIVE" };
 
@@ -50,12 +56,18 @@ export async function listPublicProducts(query = {}) {
   if (typeof query.category === "string" && query.category.trim()) {
     const categoryQuery = query.category.trim().slice(0, 100);
     let category;
-    if (mongoose.isObjectIdOrHexString(categoryQuery)) {
-      category = activeCategories.find((item) => item._id.toString() === categoryQuery);
+    if (/^[0-9a-fA-F]{24}$/.test(categoryQuery)) {
+      const normalizedId = categoryQuery.toLowerCase();
+      category = activeCategories.find((item) => item._id.toString().toLowerCase() === normalizedId);
     } else {
       category = await Category.findOne({ slug: categoryQuery.toLowerCase(), isActive: true }).select("_id").lean();
     }
-    if (!category) return { items: [], pagination: { page, limit, total: 0, totalPages: 0 } };
+    if (!category) {
+      return {
+        items: [],
+        pagination: { page, limit, total: 0, totalPages: 0, hasNextPage: false },
+      };
+    }
     filter.categoryId = category._id;
   }
 
@@ -89,19 +101,22 @@ export async function listPublicProducts(query = {}) {
   const sort = sortMap[query.sort] || sortMap.newest;
 
   const dbStart = Date.now();
-  const result = await Product.find(filter)
-    .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
-    .sort(sort)
-    .skip((page - 1) * limit)
-    .limit(limit + 1)
-    .lean();
+  const [result, total] = await Promise.all([
+    Product.find(filter)
+      .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit + 1)
+      .lean(),
+    Product.countDocuments(filter),
+  ]);
   console.log("Thời gian query DB:", Date.now() - dbStart, "ms");
 
   const hasNextPage = result.length > limit;
   const items = hasNextPage ? result.slice(0, limit) : result;
   const response = {
     items: items.map(publicProduct),
-    pagination: { page, limit, hasNextPage },
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasNextPage },
   };
   myCache.set(cacheKey, response);
   return response;

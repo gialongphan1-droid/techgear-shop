@@ -345,7 +345,7 @@ export async function listMyOrders(userId, query = {}) {
     totalAmount: order.totalAmount,
     status: order.status,
     itemCount: order.items.reduce((total, item) => total + item.quantity, 0),
-    previewItems: order.items.slice(0, 3).map((item) => ({
+    previewItems: (order.items || []).slice(0, 3).map((item) => ({
       name: item.name,
       image: item.image || null,
       quantity: item.quantity,
@@ -397,7 +397,8 @@ async function createOrderDocument(validated, customerInfo, idempotencyKey, orde
     items: validated.items.map((item) => ({
       productId: item.productId,
       name: item.name,
-      sku: item.sku,
+      sku: item.sku || null,
+      image: item.image || null,
       price: item.unitPrice,
       quantity: item.quantity,
       subtotal: item.subtotal,
