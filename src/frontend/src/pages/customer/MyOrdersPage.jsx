@@ -14,6 +14,9 @@ const dateTime = new Intl.DateTimeFormat("vi-VN", {
   timeStyle: "short",
 });
 
+const imagePlaceholder =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' fill='%23f1f5f9'/%3E%3Cpath d='M18 57l15-17 10 11 8-8 12 14H18z' fill='%23cbd5e1'/%3E%3Ccircle cx='29' cy='28' r='6' fill='%23cbd5e1'/%3E%3C/svg%3E";
+
 const statusNames = {
   PENDING: "Chờ xử lý",
   CONFIRMED: "Đã xác nhận",
@@ -71,6 +74,11 @@ export default function MyOrdersPage() {
       .then((response) => {
         if (!active) return;
         const data = response.data.data;
+        if (import.meta.env.DEV) {
+          (data.items || []).forEach((order) => {
+            console.log("Dữ liệu previewItems:", order.previewItems);
+          });
+        }
         setOrders(data.items || []);
         setPagination(
           data.pagination || {
@@ -182,46 +190,51 @@ export default function MyOrdersPage() {
                 key={order.orderCode}
                 className="border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-soft sm:p-6"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Mã đơn hàng
-                    </p>
-                    <p className="mt-1 font-mono text-base font-semibold text-ink">
-                      {order.orderCode}
-                    </p>
+                <div className="flex flex-col gap-5 sm:flex-row">
+                  <PreviewItems order={order} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                          Mã đơn hàng
+                        </p>
+                        <p className="mt-1 font-mono text-base font-semibold text-ink">
+                          {order.orderCode}
+                        </p>
+                      </div>
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+                      <div>
+                        <dt className="text-xs text-slate-500">Ngày đặt</dt>
+                        <dd className="mt-1 text-sm font-medium text-slate-800">
+                          {formatDate(order.createdAt)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Tổng tiền</dt>
+                        <dd className="mt-1 text-sm font-semibold text-ink">
+                          {currency.format(order.totalAmount || 0)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-slate-500">Sản phẩm</dt>
+                        <dd className="mt-1 text-sm font-medium text-slate-800">
+                          {order.itemCount || 0} sản phẩm
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className="mt-5 border-t border-slate-100 pt-4 sm:flex sm:justify-end">
+                      <button
+                        type="button"
+                        className="text-sm font-semibold text-brand-700 underline-offset-4 transition hover:text-brand-800 hover:underline"
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        Xem chi tiết
+                      </button>
+                    </div>
                   </div>
-                  <StatusBadge status={order.status} />
                 </div>
-                <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
-                  <div>
-                    <dt className="text-xs text-slate-500">Ngày đặt</dt>
-                    <dd className="mt-1 text-sm font-medium text-slate-800">
-                      {formatDate(order.createdAt)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Tổng tiền</dt>
-                    <dd className="mt-1 text-sm font-semibold text-ink">
-                      {currency.format(order.totalAmount || 0)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Sản phẩm</dt>
-                    <dd className="mt-1 text-sm font-medium text-slate-800">
-                      {order.itemCount || 0} sản phẩm
-                    </dd>
-                  </div>
-                  <div className="flex items-end sm:justify-end">
-                    <button
-                      type="button"
-                      className="text-sm font-semibold text-brand-700 underline-offset-4 transition hover:text-brand-800 hover:underline"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      Xem chi tiết
-                    </button>
-                  </div>
-                </dl>
               </article>
             ))}
           </div>
@@ -305,6 +318,57 @@ export default function MyOrdersPage() {
         </div>
       )}
     </section>
+  );
+}
+
+function PreviewItems({ order }) {
+  const previewItems = Array.isArray(order.previewItems)
+    ? order.previewItems.slice(0, 3)
+    : [];
+  const remainingCount = Math.max(
+    0,
+    Number(order.itemCount || 0) - previewItems.length,
+  );
+
+  if (!previewItems.length) return null;
+
+  return (
+    <div className="flex shrink-0 items-center gap-3 sm:w-56 sm:items-start sm:pt-1">
+      <div className="flex -space-x-2">
+        {previewItems.map((item, index) => {
+          const name = item.name || item.productName || "Sản phẩm";
+          const itemImage =
+            typeof item.image === "string" ? item.image : item.image?.url;
+          const image =
+            itemImage ||
+            item.imageUrl ||
+            item.thumbnail ||
+            item.images?.find?.((entry) => entry.isPrimary)?.url ||
+            item.images?.[0]?.url ||
+            imagePlaceholder;
+
+          return (
+            <img
+              key={item.productId || item._id || `${name}-${index}`}
+              src={image}
+              alt={name}
+              title={name}
+              loading="lazy"
+              className="block h-14 w-14 shrink-0 rounded-md border-2 border-white bg-slate-100 object-cover shadow-sm transition duration-200 hover:z-10 hover:scale-105 sm:h-16 sm:w-16"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = imagePlaceholder;
+              }}
+            />
+          );
+        })}
+      </div>
+      {remainingCount > 0 && (
+        <span className="text-xs font-medium leading-5 text-slate-500">
+          + {remainingCount} sản phẩm khác
+        </span>
+      )}
+    </div>
   );
 }
 

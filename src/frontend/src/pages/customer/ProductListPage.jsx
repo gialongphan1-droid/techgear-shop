@@ -23,14 +23,21 @@ export default function ProductListPage() {
       maxPrice: searchParams.get("maxPrice") || "",
       search: searchParams.get("search") || "",
     }),
-    [queryString],
+    [queryString, searchParams],
   );
+  const apiParams = useMemo(() => {
+    const params = Object.fromEntries(new URLSearchParams(queryString));
+    const category = searchParams.get("category");
+    if (category) params.category = category;
+    else delete params.category;
+    return params;
+  }, [queryString, searchParams]);
 
   useEffect(() => {
     let active = true;
     setStatus("loading");
 
-    getStorefrontProducts(Object.fromEntries(new URLSearchParams(queryString)))
+    getStorefrontProducts(apiParams)
       .then((response) => {
         if (!active) return;
         setProducts(response.data.items || []);
@@ -43,7 +50,7 @@ export default function ProductListPage() {
     return () => {
       active = false;
     };
-  }, [queryString]);
+  }, [apiParams, queryString]);
 
   useEffect(() => {
     let active = true;

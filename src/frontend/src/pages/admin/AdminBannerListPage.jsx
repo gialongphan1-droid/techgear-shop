@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { ImagePlus, LoaderCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { createAdminBanner, deleteAdminBanner, getAdminBanners, updateAdminBanner } from "../../services/adminApi.js";
+import {
+  createAdminBanner,
+  deleteAdminBanner,
+  getAdminBanners,
+  updateAdminBanner,
+  uploadAdminImage,
+} from "../../services/adminApi.js";
 
 const inputClass =
   "mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100";
@@ -29,6 +35,17 @@ export default function AdminBannerListPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [reload, setReload] = useState(0);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(
+    () => () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    },
+    [imagePreview],
+  );
 
   const {
     register,
@@ -39,8 +56,6 @@ export default function AdminBannerListPage() {
   } = useForm({
     defaultValues: {
       title: "",
-      imageUrl: "",
-      publicId: "",
       linkUrl: "",
       position: "HERO_SLIDER",
       isActive: true,
@@ -69,10 +84,11 @@ export default function AdminBannerListPage() {
     setEditingBanner(null);
     setFormOpen(true);
     setFormError("");
+    setImageFile(null);
+    setImagePreview("");
+    setImageError("");
     reset({
       title: "",
-      imageUrl: "",
-      publicId: "",
       linkUrl: "",
       position: "HERO_SLIDER",
       isActive: true,
@@ -83,10 +99,11 @@ export default function AdminBannerListPage() {
     setEditingBanner(banner);
     setFormOpen(true);
     setFormError("");
+    setImageFile(null);
+    setImagePreview("");
+    setImageError("");
     reset({
       title: banner.title || "",
-      imageUrl: banner.imageUrl || "",
-      publicId: banner.publicId || "",
       linkUrl: banner.linkUrl || "",
       position: banner.position || "HERO_SLIDER",
       isActive: banner.isActive !== false,
@@ -97,20 +114,64 @@ export default function AdminBannerListPage() {
     if (isSubmitting) return;
     setFormOpen(false);
     setFormError("");
+    setImageFile(null);
+    setImagePreview("");
+    setImageError("");
+  };
+
+  const handleImageSelection = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    if (!allowedTypes.has(file.type)) {
+      setImageFile(null);
+      setImagePreview("");
+      setImageError("Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.");
+      return;
+    }
+    if (file.size === 0 || file.size > 5 * 1024 * 1024) {
+      setImageFile(null);
+      setImagePreview("");
+      setImageError("Ảnh phải có dung lượng lớn hơn 0 và không vượt quá 5MB.");
+      return;
+    }
+
+    setImageError("");
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const onSubmit = async (values) => {
     setFormError("");
     const payload = {
       title: values.title.trim(),
-      imageUrl: values.imageUrl.trim(),
-      publicId: values.publicId.trim(),
       linkUrl: values.linkUrl.trim(),
       position: values.position.trim().toUpperCase(),
       isActive: Boolean(values.isActive),
     };
 
     try {
+      if (imageFile) {
+        setIsUploading(true);
+        try {
+          const uploadResponse = await uploadAdminImage(imageFile);
+          payload.imageUrl = uploadResponse.data.data.url;
+          payload.publicId = uploadResponse.data.data.publicId;
+        } finally {
+          setIsUploading(false);
+        }
+      } else if (editingBanner) {
+        payload.imageUrl = editingBanner.imageUrl;
+        payload.publicId = editingBanner.publicId;
+      } else {
+        const message = "Vui lòng chọn ảnh banner.";
+        setImageError(message);
+        setFormError(message);
+        return;
+      }
+
       if (editingBanner) {
         await updateAdminBanner(editingBanner._id, payload);
         notify("Banner đã được cập nhật.");
@@ -119,6 +180,9 @@ export default function AdminBannerListPage() {
         notify("Banner đã được tạo.");
       }
       setFormOpen(false);
+      setImageFile(null);
+      setImagePreview("");
+      setImageError("");
       setReload((current) => current + 1);
     } catch (error) {
       const fieldErrors = error.response?.data?.errors || [];
@@ -310,6 +374,11 @@ export default function AdminBannerListPage() {
           errors={errors}
           isSubmitting={isSubmitting}
           formError={formError}
+          imagePreview={imagePreview || editingBanner?.imageUrl || ""}
+          imageFileName={imageFile?.name || ""}
+          imageError={imageError}
+          isUploading={isUploading}
+          onImageSelection={handleImageSelection}
           handleSubmit={handleSubmit}
           onSubmit={onSubmit}
           onClose={closeForm}
@@ -325,6 +394,11 @@ function BannerFormModal({
   errors,
   isSubmitting,
   formError,
+  imagePreview,
+  imageFileName,
+  imageError,
+  isUploading,
+  onImageSelection,
   handleSubmit,
   onSubmit,
   onClose,
@@ -369,29 +443,38 @@ function BannerFormModal({
             />
             {errors.title && <FieldError>{errors.title.message}</FieldError>}
           </label>
-          <label className="block text-sm font-semibold text-slate-700">
-            URL hình ảnh *
+          <div>
+            <label className="block text-sm font-semibold text-slate-700" htmlFor="banner-image">
+              Ảnh banner *
+            </label>
+            <label
+              htmlFor="banner-image"
+              className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
+            >
+              <ImagePlus size={17} className="text-orange-600" />
+              Chọn ảnh từ thiết bị
+            </label>
             <input
-              type="url"
-              className={inputClass}
-              {...register("imageUrl", {
-                required: "Vui lòng nhập URL hình ảnh.",
-                pattern: { value: /^https?:\/\/.+/i, message: "URL phải bắt đầu bằng http hoặc https." },
-              })}
+              id="banner-image"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={onImageSelection}
             />
-            {errors.imageUrl && <FieldError>{errors.imageUrl.message}</FieldError>}
-          </label>
-          <label className="block text-sm font-semibold text-slate-700">
-            Public ID *
-            <input
-              className={inputClass}
-              {...register("publicId", {
-                required: "Vui lòng nhập publicId.",
-                maxLength: { value: 255, message: "Public ID không vượt quá 255 ký tự." },
-              })}
-            />
-            {errors.publicId && <FieldError>{errors.publicId.message}</FieldError>}
-          </label>
+            {imageError && <FieldError>{imageError}</FieldError>}
+            {imagePreview && (
+              <div className="mt-3 flex items-center gap-3">
+                <img
+                  src={imagePreview}
+                  alt="Xem trước ảnh banner"
+                  className="h-20 w-36 rounded-lg border border-slate-200 bg-slate-50 object-cover"
+                />
+                <p className="text-xs leading-5 text-slate-500">
+                  {imageFileName ? `Ảnh mới: ${imageFileName}` : "Ảnh banner hiện tại"}
+                </p>
+              </div>
+            )}
+          </div>
           <label className="block text-sm font-semibold text-slate-700">
             Liên kết đích *
             <input
@@ -438,7 +521,7 @@ function BannerFormModal({
               {isSubmitting ? (
                 <span className="inline-flex items-center gap-2">
                   <LoaderCircle size={16} className="animate-spin" />
-                  Đang lưu...
+                  {isUploading ? "Đang tải ảnh..." : "Đang lưu..."}
                 </span>
               ) : "Lưu banner"}
             </button>

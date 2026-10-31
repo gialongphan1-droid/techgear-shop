@@ -8,6 +8,8 @@ import { selectCustomerUser } from "../../store/userAuthSlice.js";
 import { addCustomerCartItem, getCustomerCart } from "../../services/publicApi.js";
 import {
   addCompareProduct,
+  getCompareProductId,
+  MAX_COMPARE_PRODUCTS,
   selectCompareProducts,
 } from "../../store/compareSlice.js";
 import { getStorefrontProductBySlug } from "../../services/storefrontService.js";
@@ -146,16 +148,16 @@ export default function ProductDetailPage() {
 
   const handleCompare = () => {
     const alreadyCompared = compareProducts.some(
-      (item) => (item._id || item.slug) === (product._id || product.slug),
+      (item) => getCompareProductId(item) === getCompareProductId(product),
     );
     if (alreadyCompared) {
       navigate("/compare");
       return;
     }
-    if (compareProducts.length >= 3) {
+    if (compareProducts.length >= MAX_COMPARE_PRODUCTS) {
       window.dispatchEvent(
         new CustomEvent("app:toast", {
-          detail: "Chỉ có thể so sánh tối đa 3 sản phẩm.",
+          detail: `Chỉ có thể so sánh tối đa ${MAX_COMPARE_PRODUCTS} sản phẩm.`,
         }),
       );
       return;

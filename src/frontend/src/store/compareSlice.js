@@ -1,5 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+export const MAX_COMPARE_PRODUCTS = 3;
+
+export function getCompareProductId(product) {
+  return product?._id || product?.slug || null;
+}
+
 const compareSlice = createSlice({
   name: "compare",
   initialState: {
@@ -8,10 +14,11 @@ const compareSlice = createSlice({
   reducers: {
     addCompareProduct(state, action) {
       const product = action.payload;
-      const productId = product._id || product.slug;
+      const productId = getCompareProductId(product);
       if (
-        state.products.length >= 3 ||
-        state.products.some((item) => (item._id || item.slug) === productId)
+        !productId ||
+        state.products.length >= MAX_COMPARE_PRODUCTS ||
+        state.products.some((item) => getCompareProductId(item) === productId)
       ) {
         return;
       }
@@ -19,12 +26,13 @@ const compareSlice = createSlice({
     },
     removeCompareProduct(state, action) {
       state.products = state.products.filter(
-        (product) => (product._id || product.slug) !== action.payload,
+        (product) => getCompareProductId(product) !== action.payload,
       );
     },
   },
 });
 
 export const { addCompareProduct, removeCompareProduct } = compareSlice.actions;
-export const selectCompareProducts = (state) => state.compare.products;
+export const selectCompareProducts = (state) =>
+  Array.isArray(state.compare?.products) ? state.compare.products : [];
 export default compareSlice.reducer;

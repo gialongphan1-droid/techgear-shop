@@ -251,6 +251,7 @@ function serializeOrder(order) {
     },
     items: plain.items.map((item) => ({
       name: item.name,
+      image: item.image || null,
       sku: item.sku || undefined,
       price: item.price,
       quantity: item.quantity,
@@ -397,6 +398,7 @@ async function createOrderDocument(validated, customerInfo, idempotencyKey, orde
     items: validated.items.map((item) => ({
       productId: item.productId,
       name: item.name,
+      image: item.image,
       sku: item.sku,
       price: item.unitPrice,
       quantity: item.quantity,
@@ -741,8 +743,9 @@ export async function createOrder(req, res, payload) {
 
   const cart = await findCheckoutCart(req, null);
 
+  let result;
   try {
-    return await createWithTransaction(cart, payload, customerInfo, userId);
+    result = await createWithTransaction(cart, payload, customerInfo, userId);
   } catch (error) {
     if (!transactionUnsupported(error) && error?.status !== 422 && error?.status !== 409 && error?.code !== 11000) {
       throw error;
@@ -750,6 +753,15 @@ export async function createOrder(req, res, payload) {
     if (!transactionUnsupported(error)) {
       throw error;
     }
-    return createWithoutTransaction(cart, payload, customerInfo, userId);
+    result = await createWithoutTransaction(cart, payload, customerInfo, userId);
   }
+
+  if (process.env.NODE_ENV === "development" && !result.isIdempotent) {
+    console.log("[Order image snapshot]", {
+      orderCode: result.order.orderCode,
+      items: result.order.items.map(({ name, image }) => ({ name, image })),
+    });
+  }
+
+  return result;
 }

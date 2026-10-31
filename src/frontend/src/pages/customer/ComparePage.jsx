@@ -1,7 +1,9 @@
-import { Scale, ShoppingCart, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Cpu, Scale, ShoppingCart, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import {
+  getCompareProductId,
   removeCompareProduct,
   selectCompareProducts,
 } from "../../store/compareSlice.js";
@@ -18,12 +20,16 @@ function getImage(product) {
   return (
     product.images?.find((image) => image.isPrimary)?.url ||
     product.images?.[0]?.url ||
+    product.imageUrl ||
+    (typeof product.image === "string" ? product.image : product.image?.url) ||
     ""
   );
 }
 
 function getSpecValue(spec) {
-  return [spec?.value, spec?.unit].filter(Boolean).join(" ") || "—";
+  return [spec?.value, spec?.unit]
+    .filter((value) => value !== undefined && value !== null && value !== "")
+    .join(" ") || "—";
 }
 
 export default function ComparePage() {
@@ -38,15 +44,20 @@ export default function ComparePage() {
   products.forEach((product) => {
     (product.specs || []).forEach((spec) => {
       const key = spec.key || spec.name;
+      if (!key) return;
       if (!specRows.has(key)) {
-        specRows.set(key, { key, name: spec.name, values: new Map() });
+        specRows.set(key, {
+          key,
+          name: spec.name || spec.key,
+          values: new Map(),
+        });
       }
-      specRows.get(key).values.set(product._id || product.slug, getSpecValue(spec));
+      specRows.get(key).values.set(getCompareProductId(product), getSpecValue(spec));
     });
   });
 
   const removeProduct = (product) => {
-    dispatch(removeCompareProduct(product._id || product.slug));
+    dispatch(removeCompareProduct(getCompareProductId(product)));
   };
 
   const addToCart = async (product) => {
@@ -139,17 +150,13 @@ export default function ComparePage() {
               </th>
               {products.map((product) => (
                 <th
-                  key={product._id || product.slug}
+                  key={getCompareProductId(product)}
                   className="w-72 border-b border-slate-200 p-4 align-top"
                 >
                   <div className="flex h-full flex-col">
                     <Link to={`/products/${product.slug}`} className="group">
                       <div className="aspect-[4/3] overflow-hidden rounded-xl bg-slate-100">
-                        <img
-                          src={getImage(product)}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition group-hover:scale-105"
-                        />
+                        <CompareProductImage product={product} />
                       </div>
                       <p className="mt-3 text-base font-black text-slate-950 group-hover:text-orange-700">
                         {product.name}
@@ -165,8 +172,10 @@ export default function ComparePage() {
                         </span>
                       )}
                     </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {product.category?.name || "Danh mục khác"}
+                    <p className="mt-1 text-xs text-slate-500">
+                      {product.category?.name ||
+                        product.categoryName ||
+                        "Danh mục khác"}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
@@ -204,9 +213,8 @@ export default function ComparePage() {
                 key: "category",
                 name: "Danh mục",
                 getValue: (product) =>
-                  categories.find((category) => category._id === product.categoryId)
-                    ?.name ||
                   product.category?.name ||
+                  product.categoryName ||
                   "—",
               },
               {
@@ -223,7 +231,7 @@ export default function ComparePage() {
               ...Array.from(specRows.values()).map((row) => ({
                 ...row,
                 getValue: (product) =>
-                  row.values.get(product._id || product.slug) || "—",
+                  row.values.get(getCompareProductId(product)) || "—",
               })),
             ].map((row) => {
               const values = products.map((product) => row.getValue(product));
@@ -235,7 +243,7 @@ export default function ComparePage() {
                   </th>
                   {products.map((product, index) => (
                     <td
-                      key={product._id || product.slug}
+                      key={getCompareProductId(product)}
                       className={`border-t border-slate-200 p-4 text-sm ${
                         hasDifference
                           ? "bg-orange-50 font-semibold text-orange-900"
@@ -256,5 +264,35 @@ export default function ComparePage() {
         có thể cuộn ngang trên màn hình nhỏ.
       </p>
     </section>
+  );
+}
+
+function CompareProductImage({ product }) {
+  const image = getImage(product);
+  const [failed, setFailed] = useState(!image);
+
+  if (failed) {
+    return (
+      <div
+        role="img"
+        aria-label={`Không có ảnh cho ${product.name}`}
+        className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-100 text-slate-400"
+      >
+        <Cpu size={34} strokeWidth={1.2} />
+        <span className="text-[10px] font-semibold tracking-[0.18em]">
+          TECHGEAR
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={image}
+      alt={product.name}
+      loading="lazy"
+      className="h-full w-full object-cover transition group-hover:scale-105"
+      onError={() => setFailed(true)}
+    />
   );
 }
