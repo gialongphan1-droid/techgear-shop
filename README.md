@@ -10,38 +10,84 @@ Trước khi bắt đầu code, mọi thành viên (và AI) **bắt buộc** ph�
 - **Tài liệu SRS (Đặc tả yêu cầu):** Đọc trong thư mục `docs/` (từ file 01 đến 05).
 - **Tiến độ Backend:** Đọc file `docs/BACKEND_PROGRESS.md` để biết API nào đã hoàn thiện và sẵn sàng tích hợp.
 
-## 🚀 HƯỚNG DẪN CÀI ĐẶT & CHẠY DỰ ÁN
+## Kiến trúc tổng quan
 
-### 1. Cài đặt và chạy Backend
+```mermaid
+flowchart LR
+    Browser["Trình duyệt"]
+    FE["Frontend<br/>React + Vite"]
+    API["Backend API<br/>Express"]
+    Auth["Auth, CSRF<br/>và validation"]
+    Services["Services<br/>nghiệp vụ"]
+    Mongo[("MongoDB<br/>Mongoose")]
+    Qdrant[("Qdrant<br/>vector search")]
+    Embedding["Embedding service"]
+    Cloudinary["Cloudinary<br/>ảnh sản phẩm"]
+    Mail["SMTP<br/>xác thực email"]
 
-Mở Terminal, di chuyển vào thư mục backend và chạy các lệnh sau:
-````bash
-cd backend
+    Browser --> FE
+    FE -->|"HTTP / JSON + cookie"| API
+    API --> Auth
+    Auth --> Services
+    Services --> Mongo
+    Services --> Embedding
+    Embedding --> Qdrant
+    Services --> Cloudinary
+    Services --> Mail
+```
+
+### Các module chính
+
+| Module | Trách nhiệm | Vị trí |
+| --- | --- | --- |
+| Frontend | Cửa hàng, trang quản trị, trạng thái phiên và gọi API | `src/frontend/src/` |
+| API & routes | Định tuyến HTTP và middleware bảo vệ/kiểm tra request | `src/backend/server.js`, `src/backend/routes/`, `src/backend/middleware/` |
+| Controllers | Ánh xạ request/response và gọi service | `src/backend/controllers/` |
+| Services | Nghiệp vụ auth, sản phẩm, giỏ hàng, đơn hàng, tìm kiếm | `src/backend/services/` |
+| Models | Schema và truy cập dữ liệu MongoDB | `src/backend/models/` |
+| Vector search | Tạo embedding và tìm kiếm/đồng bộ vector | `src/backend/services/embedding.service.js`, `src/backend/services/semanticSearch.service.js`, `src/backend/services/qdrantSync.service.js` |
+| Tích hợp ngoài | Email xác thực và lưu trữ ảnh | `src/backend/utils/mailer.js`, Cloudinary config/services |
+
+Chi tiết các luồng đăng ký, checkout, semantic search và đồng bộ Qdrant: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## 🚀 Quick start
+
+Yêu cầu: Node.js 20 trở lên, MongoDB và npm. Mở hai terminal tại thư mục gốc repository.
+
+### 1. Backend
+
+```powershell
+cd src/backend
+Copy-Item .env.example .env
 npm install
-**Cấu hình môi trường:**
-Tạo file `.env` ở thư mục `backend/` (bạn có thể copy từ file `.env.example`). Điền các thông số kết nối MongoDB (`MONGODB_URI`), khóa bảo mật (`JWT_SECRET`), v.v.
+```
 
-**Khởi chạy Server:**
-```bash
+Điền `MONGODB_URI`, `JWT_SECRET` và thông tin tích hợp cần dùng trong `src/backend/.env`. Để bật xác thực email, cấu hình SMTP. Semantic search cần Qdrant và model embedding được cấu hình trong môi trường.
+
+```powershell
 npm run dev
-*(Server sẽ chạy ở cổng 5000)*
+```
 
-### 2. Cài đặt và chạy Frontend
-Mở một Tab Terminal mới, di chuyển vào thư mục frontend và chạy:
+Backend mặc định chạy tại `http://localhost:5000`; health check: `http://localhost:5000/api/health`.
 
-```bash
-cd frontend
+### 2. Frontend
+
+Trong terminal thứ hai:
+
+```powershell
+cd src/frontend
+Copy-Item .env.example .env
 npm install
 npm run dev
-*(Giao diện sẽ chạy ở cổng 5173)*
+```
 
----
+`VITE_API_URL` mặc định trong file mẫu là `http://localhost:5000/api`. Vite sẽ hiển thị địa chỉ giao diện, thường là `http://localhost:5173`.
 
-## 🛠 CÁC LỆNH TIỆN ÍCH (Dành cho Backend)
-- **`npm run seed:admin`**: Khởi tạo tài khoản Admin đầu tiên vào Database.
-  - *Tài khoản mặc định:* `admin@techgear.com`
-  - *Mật khẩu:* `Admin@123456`
-````
+### Lệnh backend hữu ích
+
+- `npm run seed:admin` — tạo tài khoản Admin ban đầu theo cấu hình môi trường.
+- `npm run index:products` — lập chỉ mục sản phẩm vào Qdrant.
+- `npm test` — chạy các test Node.js hiện có.
 
 ## ⚠️ Checklist trước khi deploy production
 - [ ] Đặt `RATE_LIMIT_ENABLED=true` trong `.env` (hiện đang `false` để dev test)
