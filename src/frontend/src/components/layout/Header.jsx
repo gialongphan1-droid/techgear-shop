@@ -26,7 +26,7 @@ import {
 import Button from "../ui/Button.jsx";
 
 const navLinkClass = ({ isActive }) =>
-  `text-sm font-medium transition-colors hover:text-brand-700 ${
+  `text-sm font-medium transition-colors hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
     isActive ? "text-brand-700" : "text-slate-700"
   }`;
 
@@ -112,6 +112,7 @@ export default function Header() {
           className="lg:hidden"
           aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
           aria-expanded={menuOpen}
+          aria-controls="mobile-navigation"
           onClick={() => setMenuOpen((open) => !open)}
         >
           {menuOpen ? <X size={21} /> : <Menu size={21} />}
@@ -149,6 +150,7 @@ export default function Header() {
               type="submit"
               size="sm"
               className="h-8"
+              aria-label="Tìm kiếm sản phẩm"
             >
               Tìm kiếm
             </Button>
@@ -175,7 +177,7 @@ export default function Header() {
                   <Link
                     key={category._id}
                     to={`/products?category=${encodeURIComponent(category.slug)}`}
-                    className="block rounded-md px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-50 hover:text-brand-700"
+                    className="block rounded-md px-3 py-2.5 text-sm text-slate-700 transition hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
                     onClick={() => setCategoriesOpen(false)}
                   >
                     {category.name}
@@ -195,12 +197,9 @@ export default function Header() {
           <NavLink to="/products" className={navLinkClass}>
             Sản phẩm
           </NavLink>
-          {authStatus !== "checking" && (
-            <NavLink
-              to={customer ? "/my-orders" : "/track-order"}
-              className={navLinkClass}
-            >
-              {customer ? "Đơn hàng của tôi" : "Tra cứu đơn"}
+          {customer && authStatus === "authenticated" && (
+            <NavLink to="/my-orders" className={navLinkClass}>
+              Đơn hàng của tôi
             </NavLink>
           )}
           <NavLink to="/compare" className={navLinkClass}>
@@ -211,14 +210,14 @@ export default function Header() {
         {customer ? (
           <div className="hidden items-center gap-3 lg:flex">
             <span className="inline-flex max-w-36 items-center gap-2 truncate text-sm font-medium text-slate-700" title={customer.fullName}>
-              <UserRound size={17} className="shrink-0 text-brand-700" />
+              <UserRound size={17} aria-hidden="true" className="shrink-0 text-brand-700" />
               {customer.fullName}
             </span>
             <button
               type="button"
               disabled={loggingOut}
               onClick={handleLogout}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-brand-700 disabled:opacity-50"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-md text-sm font-medium text-slate-500 transition hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-50"
             >
               {loggingOut ? (
                 <LoaderCircle size={16} className="animate-spin" />
@@ -229,13 +228,21 @@ export default function Header() {
             </button>
           </div>
         ) : authStatus !== "checking" ? (
-          <Link
-            to="/login"
-            className="hidden items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-brand-700 lg:inline-flex"
-          >
-            <LogIn size={17} />
-            Đăng nhập
-          </Link>
+          <div className="hidden items-center gap-3 lg:flex">
+            <Link
+              to="/login"
+              className="inline-flex min-h-10 items-center gap-2 rounded-md text-sm font-semibold text-slate-700 transition hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            >
+              <LogIn size={17} aria-hidden="true" />
+              Đăng nhập
+            </Link>
+            <Link
+              to="/register"
+              className="inline-flex min-h-10 items-center rounded-lg bg-ink px-3 text-sm font-semibold text-white transition hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            >
+              Đăng ký
+            </Link>
+          </div>
         ) : null}
 
         <Link
@@ -243,7 +250,7 @@ export default function Header() {
           className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
           aria-label={`So sánh, ${compareCount} sản phẩm`}
         >
-          <Scale size={19} />
+          <Scale size={19} aria-hidden="true" />
           <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-800 px-1 text-[11px] font-bold text-white">
             {compareCount}
           </span>
@@ -253,7 +260,7 @@ export default function Header() {
           className="relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 lg:ml-0"
           aria-label={`Giỏ hàng, ${itemCount} sản phẩm`}
         >
-          <ShoppingCart size={19} />
+          <ShoppingCart size={19} aria-hidden="true" />
           <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-600 px-1 text-[11px] font-bold text-white">
             {itemCount}
           </span>
@@ -261,7 +268,7 @@ export default function Header() {
       </div>
 
       {menuOpen && (
-        <div className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden">
+        <div id="mobile-navigation" className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden">
           <form
             className="mb-4 flex h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3"
             role="search"
@@ -286,6 +293,7 @@ export default function Header() {
               variant="ghost"
               size="sm"
               className="px-2 text-brand-700 hover:bg-transparent hover:text-brand-800"
+              aria-label="Tìm kiếm sản phẩm"
             >
               Tìm
             </Button>
@@ -300,46 +308,61 @@ export default function Header() {
                   type="button"
                   disabled={loggingOut}
                   onClick={handleLogout}
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-600 disabled:opacity-50"
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:opacity-50"
                 >
-                  <LogOut size={14} />
+                  {loggingOut ? (
+                    <LoaderCircle size={14} aria-hidden="true" className="animate-spin" />
+                  ) : (
+                    <LogOut size={14} aria-hidden="true" />
+                  )}
                   {loggingOut ? "Đang thoát" : "Đăng xuất"}
                 </button>
               </div>
             ) : authStatus !== "checking" ? (
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-50"
-                onClick={() => setMenuOpen(false)}
-              >
-                <LogIn size={16} /> Đăng nhập
-              </Link>
+              <div className="grid grid-cols-2 gap-2 px-1 py-1">
+                <Link
+                  to="/login"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <LogIn size={16} aria-hidden="true" /> Đăng nhập
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ink px-3 text-sm font-semibold text-white hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Đăng ký
+                </Link>
+              </div>
             ) : null}
             <NavLink
               to="/"
               end
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
               onClick={() => setMenuOpen(false)}
             >
               Trang chủ
             </NavLink>
             <NavLink
               to="/products"
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
               onClick={() => setMenuOpen(false)}
             >
               Tất cả sản phẩm
             </NavLink>
-            <NavLink
-              to={customer ? "/my-orders" : "/track-order"}
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => setMenuOpen(false)}
-            >
-              {customer ? "Đơn hàng của tôi" : "Tra cứu đơn hàng"}
-            </NavLink>
+            {customer && authStatus === "authenticated" && (
+              <NavLink
+                to="/my-orders"
+                className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                onClick={() => setMenuOpen(false)}
+              >
+                Đơn hàng của tôi
+              </NavLink>
+            )}
             <NavLink
               to="/compare"
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
               onClick={() => setMenuOpen(false)}
             >
               So sánh sản phẩm ({compareCount})
@@ -351,7 +374,7 @@ export default function Header() {
               <Link
                 key={category._id}
                 to={`/products?category=${encodeURIComponent(category.slug)}`}
-                className="rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
                 onClick={() => setMenuOpen(false)}
               >
                 {category.name}

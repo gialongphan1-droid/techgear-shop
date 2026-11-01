@@ -14,7 +14,8 @@ const dateTime = new Intl.DateTimeFormat("vi-VN", {
   timeStyle: "short",
 });
 
-const imagePlaceholder =
+const imagePlaceholder = "/images/no-image.png";
+const imageFallback =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' fill='%23f1f5f9'/%3E%3Cpath d='M18 57l15-17 10 11 8-8 12 14H18z' fill='%23cbd5e1'/%3E%3Ccircle cx='29' cy='28' r='6' fill='%23cbd5e1'/%3E%3C/svg%3E";
 
 const statusNames = {
@@ -30,7 +31,7 @@ const statusNames = {
 const statusClasses = {
   PENDING: "border-amber-200 bg-amber-50 text-amber-800",
   CONFIRMED: "border-blue-200 bg-blue-50 text-blue-800",
-  PROCESSING: "border-indigo-200 bg-indigo-50 text-indigo-800",
+  PROCESSING: "border-orange-200 bg-orange-50 text-orange-800",
   SHIPPED: "border-violet-200 bg-violet-50 text-violet-800",
   COMPLETED: "border-emerald-200 bg-emerald-50 text-emerald-800",
   CANCELLED: "border-red-200 bg-red-50 text-red-800",
@@ -325,49 +326,42 @@ function PreviewItems({ order }) {
   const previewItems = Array.isArray(order.previewItems)
     ? order.previewItems.slice(0, 3)
     : [];
-  const remainingCount = Math.max(
-    0,
-    Number(order.itemCount || 0) - previewItems.length,
-  );
 
   if (!previewItems.length) return null;
 
   return (
-    <div className="flex shrink-0 items-center gap-3 sm:w-56 sm:items-start sm:pt-1">
-      <div className="flex -space-x-2">
-        {previewItems.map((item, index) => {
-          const name = item.name || item.productName || "Sản phẩm";
-          const itemImage =
-            typeof item.image === "string" ? item.image : item.image?.url;
-          const image =
-            itemImage ||
-            item.imageUrl ||
-            item.thumbnail ||
-            item.images?.find?.((entry) => entry.isPrimary)?.url ||
-            item.images?.[0]?.url ||
-            imagePlaceholder;
+    <div
+      className={`flex shrink-0 items-start ${
+        previewItems.length === 1 ? "sm:w-44" : "gap-2 sm:w-56"
+      }`}
+      aria-label={`Ảnh ${previewItems.length} sản phẩm trong đơn hàng`}
+    >
+      {previewItems.map((item, index) => {
+        const name = item.name || "Sản phẩm";
+        const image =
+          typeof item.image === "string" && item.image
+            ? item.image
+            : imagePlaceholder;
 
-          return (
-            <img
-              key={item.productId || item._id || `${name}-${index}`}
-              src={image}
-              alt={name}
-              title={name}
-              loading="lazy"
-              className="block h-14 w-14 shrink-0 rounded-md border-2 border-white bg-slate-100 object-cover shadow-sm transition duration-200 hover:z-10 hover:scale-105 sm:h-16 sm:w-16"
-              onError={(event) => {
-                event.currentTarget.onerror = null;
-                event.currentTarget.src = imagePlaceholder;
-              }}
-            />
-          );
-        })}
-      </div>
-      {remainingCount > 0 && (
-        <span className="text-xs font-medium leading-5 text-slate-500">
-          + {remainingCount} sản phẩm khác
-        </span>
-      )}
+        return (
+          <img
+            key={`${name}-${index}`}
+            src={image}
+            alt={`Ảnh sản phẩm: ${name}`}
+            title={name}
+            loading="lazy"
+            className={`block shrink-0 rounded-md border border-slate-200 bg-slate-100 object-cover shadow-sm transition duration-200 hover:z-10 hover:scale-105 ${
+              previewItems.length === 1
+                ? "h-28 w-28 sm:h-36 sm:w-36"
+                : "h-14 w-14 sm:h-16 sm:w-16"
+            }`}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = imageFallback;
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -29,7 +29,10 @@ export default function LoginPage() {
       const requestedPath =
         location.state?.returnTo || searchParams.get("returnTo");
       const returnTo =
-        requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
+        typeof requestedPath === "string" &&
+        requestedPath.startsWith("/") &&
+        !requestedPath.includes("://") &&
+        !requestedPath.includes("//")
           ? requestedPath
           : "/";
       navigate(returnTo, { replace: true });

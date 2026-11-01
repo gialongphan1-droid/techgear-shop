@@ -10,6 +10,45 @@ const axiosClient = axios.create({
   withCredentials: true,
 });
 
+function getRequestPath(config) {
+  const requestUrl = config?.url || "";
+  const path = requestUrl.replace(/^https?:\/\/[^/]+/i, "").split(/[?#]/, 1)[0];
+  return path.replace(/^\/api(?=\/)/, "");
+}
+
+function isAuthEndpoint(method, path) {
+  return (
+    (method === "post" &&
+      ["/auth/login", "/auth/register", "/admin/login"].includes(path)) ||
+    (method === "get" && ["/auth/me", "/admin/me"].includes(path))
+  );
+}
+
+function isSafeInternalPath(path) {
+  return (
+    typeof path === "string" &&
+    path.startsWith("/") &&
+    !path.includes("://") &&
+    !path.includes("//")
+  );
+}
+
+function getRetryAfterSeconds(headers) {
+  const retryAfter = headers?.get?.("Retry-After") ?? headers?.["retry-after"];
+  if (retryAfter === undefined || retryAfter === null) return null;
+
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds);
+
+  const retryAt = Date.parse(retryAfter);
+  if (!Number.isFinite(retryAt)) return null;
+  return Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+}
+
+function showToast(message) {
+  window.dispatchEvent(new CustomEvent("app:toast", { detail: message }));
+}
+
 function getCsrfCookie() {
   const cookie = document.cookie
     .split("; ")
@@ -19,6 +58,7 @@ function getCsrfCookie() {
 }
 
 axiosClient.interceptors.request.use((config) => {
+  config.withCredentials = true;
   const method = config.method?.toLowerCase();
   const isWriteRequest = ["post", "put", "patch", "delete"].includes(method);
 
@@ -40,50 +80,44 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const requestUrl = error.config?.url || "";
-    const isCustomerAuthRequest = /^\/auth\/(login|register|verify-email)(\?|$)/.test(
-      requestUrl,
-    );
+    const method = error.config?.method?.toLowerCase() || "";
+    const requestPath = getRequestPath(error.config);
+    const isExcludedAuthEndpoint = isAuthEndpoint(method, requestPath);
 
-    if (status === 401 && !error.config?.skipAuthRedirect && !isCustomerAuthRequest) {
+    if (status === 401 && !isExcludedAuthEndpoint) {
+      const currentPath = `${window.location.pathname}${window.location.search}`;
+      const returnTo = isSafeInternalPath(currentPath) ? currentPath : "/";
       if (window.location.pathname.startsWith("/admin")) {
         if (window.location.pathname !== "/admin/login") {
-          const returnTo = encodeURIComponent(
-            `${window.location.pathname}${window.location.search}`,
+          window.location.assign(
+            `/admin/login?returnTo=${encodeURIComponent(returnTo)}`,
           );
-          window.location.assign(`/admin/login?returnTo=${returnTo}`);
         }
       } else if (!["/login", "/register", "/verify-email"].includes(window.location.pathname)) {
         store.dispatch(clearCustomerSession());
-        const returnTo = encodeURIComponent(
-          `${window.location.pathname}${window.location.search}`,
-        );
-        window.location.assign(`/login?returnTo=${returnTo}`);
+        window.location.assign(`/login?returnTo=${encodeURIComponent(returnTo)}`);
       }
     }
 
     if (status === 403) {
-      const message = error.response?.data?.message || "";
-      if (/xác thực email|chưa xác thực/i.test(message)) {
-        window.dispatchEvent(
-          new CustomEvent("app:toast", {
-            detail: "Tài khoản chưa xác thực email",
-          }),
-        );
-      } else {
-        window.dispatchEvent(
-          new CustomEvent("api:forbidden", {
-            detail: "Yêu cầu bị từ chối. Vui lòng kiểm tra phiên đăng nhập, CSRF hoặc Origin.",
-          }),
-        );
-      }
+      const responseData = error.response?.data;
+      const errors = Array.isArray(responseData?.errors) ? responseData.errors : [];
+      const emailNotVerified =
+        responseData?.code === "EMAIL_NOT_VERIFIED" ||
+        errors.some((item) => item?.code === "EMAIL_NOT_VERIFIED");
+      showToast(
+        emailNotVerified
+          ? "Tài khoản chưa xác thực email"
+          : "Không có quyền truy cập",
+      );
     }
 
     if (status === 429) {
-      window.dispatchEvent(
-        new CustomEvent("api:rate-limit", {
-          detail: "Quá nhiều yêu cầu, vui lòng thử lại sau",
-        }),
+      const retryAfter = getRetryAfterSeconds(error.response?.headers);
+      showToast(
+        retryAfter === null
+          ? "Vui lòng chờ rồi thử lại"
+          : `Vui lòng chờ ${retryAfter} giây rồi thử lại`,
       );
     }
 

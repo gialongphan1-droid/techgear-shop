@@ -13,8 +13,12 @@ export const getPublicBanners = () => axiosClient.get("/banners");
 export const getPublicCategories = () => axiosClient.get("/categories");
 export const getPublicProducts = (params) =>
   axiosClient.get("/products", { params });
+export const getPublicSemanticSearch = (query) =>
+  axiosClient.get("/products/semantic-search", { params: { q: query } });
 export const getPublicProductBySlug = (slug) =>
   axiosClient.get(`/products/${encodeURIComponent(slug)}`);
+export const getPublicSimilarProducts = (productId) =>
+  axiosClient.get(`/products/${encodeURIComponent(productId)}/similar`);
 export const getCustomerCart = () => axiosClient.get("/cart");
 export const addCustomerCartItem = (payload) =>
   axiosClient.post("/cart/items", payload);

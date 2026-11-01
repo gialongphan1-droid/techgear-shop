@@ -29,7 +29,11 @@ export default function AdminLoginPage() {
       dispatch(setAdminSession({ admin, csrfToken }));
       const requestedPath = searchParams.get("returnTo");
       const returnTo =
-        requestedPath?.startsWith("/admin") && requestedPath !== "/admin/login"
+        typeof requestedPath === "string" &&
+        (requestedPath === "/admin" || requestedPath.startsWith("/admin/")) &&
+        !requestedPath.includes("://") &&
+        !requestedPath.includes("//") &&
+        requestedPath !== "/admin/login"
           ? requestedPath
           : "/admin";
       navigate(returnTo, { replace: true });

@@ -3,16 +3,23 @@ import { Check, Scale, ShoppingCart } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import ProductCard from "../../components/storefront/ProductCard.jsx";
 import { setCartData } from "../../store/cartSlice.js";
 import { selectCustomerUser } from "../../store/userAuthSlice.js";
-import { addCustomerCartItem, getCustomerCart } from "../../services/publicApi.js";
+import {
+  addCustomerCartItem,
+  getCustomerCart,
+} from "../../services/publicApi.js";
 import {
   addCompareProduct,
   getCompareProductId,
   MAX_COMPARE_PRODUCTS,
   selectCompareProducts,
 } from "../../store/compareSlice.js";
-import { getStorefrontProductBySlug } from "../../services/storefrontService.js";
+import {
+  getStorefrontProductBySlug,
+  getStorefrontSimilarProducts,
+} from "../../services/storefrontService.js";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", {
@@ -31,6 +38,8 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState("loading");
   const [activeImage, setActiveImage] = useState(0);
+  const [similarProducts, setSimilarProducts] = useState([]);
+  const [similarStatus, setSimilarStatus] = useState("idle");
 
   useEffect(() => {
     let active = true;
@@ -49,6 +58,30 @@ export default function ProductDetailPage() {
       active = false;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (!product?._id) return undefined;
+    let active = true;
+    setSimilarStatus("loading");
+    setSimilarProducts([]);
+
+    getStorefrontSimilarProducts(product._id)
+      .then((response) => {
+        if (!active) return;
+        const items = response.data.items;
+        setSimilarProducts(Array.isArray(items) ? items : []);
+        setSimilarStatus("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setSimilarProducts([]);
+        setSimilarStatus("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [product?._id]);
 
   if (status === "loading") {
     return (
@@ -291,6 +324,52 @@ export default function ProductDetailPage() {
         </div>
       </div>
       </article>
+      {similarStatus === "loading" && (
+        <section
+          className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"
+          aria-labelledby="similar-products-heading"
+          role="status"
+          aria-live="polite"
+        >
+          <h2
+            id="similar-products-heading"
+            className="text-2xl font-black text-slate-950"
+          >
+            Sản phẩm tương tự
+          </h2>
+          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <div
+                key={index}
+                className="h-72 animate-pulse rounded-xl bg-slate-200"
+                aria-hidden="true"
+              />
+            ))}
+          </div>
+          <span className="sr-only">Đang tải sản phẩm tương tự...</span>
+        </section>
+      )}
+      {similarStatus === "ready" && similarProducts.length > 0 && (
+        <section
+          className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8"
+          aria-labelledby="similar-products-heading"
+        >
+          <h2
+            id="similar-products-heading"
+            className="text-2xl font-black text-slate-950"
+          >
+            Sản phẩm tương tự
+          </h2>
+          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {similarProducts.map((similarProduct) => (
+              <ProductCard
+                key={similarProduct._id}
+                product={similarProduct}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }

@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "../../components/storefront/ProductCard.jsx";
-import { getStorefrontCategories, getStorefrontProducts } from "../../services/storefrontService.js";
+import {
+  getStorefrontCategories,
+  getStorefrontProducts,
+  getStorefrontSemanticSearch,
+} from "../../services/storefrontService.js";
 
 const fieldClass =
   "mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100";
@@ -15,6 +19,8 @@ export default function ProductListPage() {
   const [brands, setBrands] = useState([]);
   const [filterError, setFilterError] = useState("");
   const [status, setStatus] = useState("loading");
+  const [searchError, setSearchError] = useState("");
+  const [retry, setRetry] = useState(0);
   const filters = useMemo(
     () => ({
       category: searchParams.get("category") || "",
@@ -35,22 +41,60 @@ export default function ProductListPage() {
 
   useEffect(() => {
     let active = true;
-    setStatus("loading");
+    const loadProducts = async () => {
+      setStatus("loading");
+      setSearchError("");
+      const searchTerm = filters.search.trim();
 
-    getStorefrontProducts(apiParams)
-      .then((response) => {
+      if (searchTerm && searchTerm.length < 2) {
+        setProducts([]);
+        setSearchError("Nhập ít nhất 2 ký tự để tìm kiếm.");
+        setStatus("ready");
+        return;
+      }
+
+      try {
+        let response;
+        if (searchTerm) {
+          try {
+            response = await getStorefrontSemanticSearch(searchTerm);
+          } catch (error) {
+            if (error.response?.status !== 503) throw error;
+            response = await getStorefrontProducts({ search: searchTerm });
+          }
+        } else {
+          response = await getStorefrontProducts(apiParams);
+        }
+
         if (!active) return;
         setProducts(response.data.items || []);
         setStatus("ready");
-      })
-      .catch(() => {
-        if (active) setStatus("error");
-      });
+      } catch (error) {
+        if (!active) return;
+        setProducts([]);
+        setSearchError(
+          error.response?.status === 429
+            ? "Vui lòng chờ rồi thử lại."
+            : "Không thể tìm kiếm sản phẩm. Vui lòng thử lại sau.",
+        );
+        setStatus("error");
+
+        if (error.response?.status >= 500) {
+          window.dispatchEvent(
+            new CustomEvent("app:toast", {
+              detail: "Tìm kiếm đang gặp sự cố. Vui lòng thử lại sau.",
+            }),
+          );
+        }
+      }
+    };
+
+    loadProducts();
 
     return () => {
       active = false;
     };
-  }, [apiParams, queryString]);
+  }, [apiParams, filters.search, queryString, retry]);
 
   useEffect(() => {
     let active = true;
@@ -119,7 +163,7 @@ export default function ProductListPage() {
             Khám phá TechGear
           </p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
-            Tất cả sản phẩm
+            {filters.search ? "Kết quả tìm kiếm" : "Tất cả sản phẩm"}
           </h1>
         </div>
         <p className="text-sm text-slate-500">
@@ -211,6 +255,7 @@ export default function ProductListPage() {
           <label className="mt-5 block text-sm font-semibold text-slate-700">
             Tìm kiếm
             <input
+              aria-label="Tìm kiếm sản phẩm"
               type="search"
               placeholder="Tên hoặc thương hiệu"
               value={filters.search}
@@ -238,24 +283,32 @@ export default function ProductListPage() {
           )}
           {status === "error" && (
             <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
-              Không thể tải danh sách. Vui lòng thử lại.
+              {searchError || "Không thể tải danh sách. Vui lòng thử lại."}
               <button
                 type="button"
                 className="ml-3 font-bold underline"
-                onClick={() => setSearchParams(new URLSearchParams(queryString))}
+                onClick={() => setRetry((current) => current + 1)}
               >
                 Thử lại
               </button>
             </div>
           )}
           {status === "ready" && !products.length && (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center">
+            <div
+              className="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center"
+              role="status"
+              aria-live="polite"
+            >
               <h2 className="text-lg font-bold text-slate-900">
-                Không có sản phẩm phù hợp
+                {filters.search.trim().length >= 2
+                  ? `Không tìm thấy sản phẩm phù hợp với: ${filters.search.trim()}`
+                  : searchError || "Không có sản phẩm phù hợp"}
               </h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Hãy thử thay đổi điều kiện lọc hoặc xóa bộ lọc.
-              </p>
+              {!filters.search.trim() && (
+                <p className="mt-2 text-sm text-slate-600">
+                  Hãy thử thay đổi điều kiện lọc hoặc xóa bộ lọc.
+                </p>
+              )}
               <button
                 type="button"
                 className="mt-5 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600"

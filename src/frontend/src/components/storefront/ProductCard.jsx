@@ -27,6 +27,7 @@ export default function ProductCard({ product }) {
   const image =
     product.images?.find((item) => item.isPrimary)?.url ||
     product.images?.[0]?.url;
+  const similarityScore = Number(product.similarityScore);
 
   const handleCompare = () => {
     if (isCompared) return;
@@ -49,7 +50,10 @@ export default function ProductCard({ product }) {
 
   return (
     <article className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift">
-      <Link to={`/products/${product.slug}`} className="block">
+      <Link
+        to={`/products/${product.slug}`}
+        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
+      >
         <ProductArtwork key={image || product._id || product.slug} image={image} name={product.name} />
         <div className="p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
@@ -58,6 +62,11 @@ export default function ProductCard({ product }) {
           <h3 className="mt-2 min-h-12 line-clamp-2 font-semibold leading-6 text-slate-900">
             {product.name}
           </h3>
+          {Number.isFinite(similarityScore) && (
+            <p className="mt-1 text-xs font-medium text-slate-600">
+              Độ liên quan: {Math.round(similarityScore * 100)}%
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-lg font-bold tracking-tight text-ink">
               {formatPrice(product.salePrice ?? product.listPrice)}

@@ -3,6 +3,8 @@ import {
   getPublicCategories,
   getPublicProductBySlug,
   getPublicProducts,
+  getPublicSimilarProducts,
+  getPublicSemanticSearch,
 } from "./publicApi.js";
 
 export async function getStorefrontBanners() {
@@ -20,7 +22,17 @@ export async function getStorefrontProducts(params = {}) {
   return response.data;
 }
 
+export async function getStorefrontSemanticSearch(query) {
+  const response = await getPublicSemanticSearch(query);
+  return response.data;
+}
+
 export async function getStorefrontProductBySlug(slug) {
   const response = await getPublicProductBySlug(slug);
+  return response.data;
+}
+
+export async function getStorefrontSimilarProducts(productId) {
+  const response = await getPublicSimilarProducts(productId);
   return response.data;
 }
