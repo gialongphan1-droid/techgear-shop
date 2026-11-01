@@ -103,8 +103,21 @@
 - `POST /api/orders/track` — Body: `{ "orderCode": "...", "trackCode": "..." }`. Tra cứu ẩn danh.
 - `GET /api/orders/my-orders` — Query: `page`, `limit`.
   - Trả `orderCode`, `createdAt`, `totalAmount`, `status`, `itemCount`, tối đa 3 `previewItems` và pagination.
-  - `previewItems` gồm `{ "name": "...", "image": "https://...", "quantity": 1 }`.
-  - Đơn được tạo trước khi snapshot ảnh được bổ sung có thể trả `image: null`; FE cần dùng placeholder.
+  - Ví dụ `previewItems` trong mỗi phần tử đơn hàng:
+
+    ```json
+    {
+      "previewItems": [
+        {
+          "name": "Chuột Logitech G Pro X",
+          "image": "https://...",
+          "quantity": 2
+        }
+      ]
+    }
+    ```
+
+  - Với đơn hàng tạo trước fix snapshot ảnh ngày 2026-11-01, `image` có thể là `null`; FE cần dùng placeholder.
 
 ### 3.7. Quản lý Admin (yêu cầu `admin_token` và CSRF)
 
@@ -198,6 +211,12 @@ EMBEDDING_MODEL=onnx-community/granite-embedding-311m-multilingual-r2-ONNX
 EMBEDDING_DIMENSION=768
 ```
 
+### 7.1. Threshold & Tuning
+
+- `SEMANTIC_SEARCH_THRESHOLD=0.82` là giá trị mặc định.
+- Kết quả test: query `chuột gaming` trả 5 sản phẩm với score từ `0.826` đến `0.877`; query rác `xyzabc` trả 0 sản phẩm.
+- Model: `onnx-community/granite-embedding-311m-multilingual-r2-ONNX` (768 chiều, `cls` pooling).
+
 ## 8. Test Suite
 
 - Backend Test Suite: **37/37 PASS** (2026-10-31).
@@ -223,3 +242,24 @@ Xem checklist chi tiết trong `README.md`. Tóm tắt:
 - Cấu hình MongoDB Atlas IP access list theo hạ tầng production; tránh mở toàn mạng nếu không cần thiết.
 - Kiểm tra Qdrant Cloud network access, Cloudinary credentials và email credentials.
 - Đảm bảo secrets được lưu trong secret manager/environment variables, không commit vào repository.
+
+## 11. AI Tooling & Skills
+
+Danh sách 13 skill có `SKILL.md` đã cài trong `~/.agents/skills/`:
+
+- **BE core:** `rc-api-forge`, `rc-auth-architect`, `rc-code-review`, `rc-tdd`.
+- **Audit:** `rc-codeprobe-security`, `rc-codeprobe-architecture`, `rc-codeprobe-performance`, `rc-codeprobe-error-handling`.
+- **Git:** `rc-git-guardrails`, `rc-git-commit-push`.
+- **Security:** `scar-tissue`, `security-baseline`, `ai-repo-safety`.
+
+Skill companion `rc-codeprobe/` gồm `shared-preamble.md` và 6 reference trong `references/`: `api-design.md`, `javascript-typescript.md`, `php-laravel.md`, `python.md`, `react-nextjs.md`, `sql-database.md`.
+
+**Lưu ý bảo mật:** Chỉ copy các file `.md` từ repository `rightcodehere/skills`; không copy `scripts/*.py` vì Snyk đánh dấu chúng là High Risk.
+
+## 12. Security Audit
+
+- **Ngày audit:** 2026-11-01.
+- **Tool:** `rc-codeprobe-security` với full OWASP references.
+- **Kết quả:** **0 vulnerabilities** trong 9 OWASP categories: Injection, Authentication & Authorization, XSS, Mass Assignment, CSRF, Insecure Deserialization, Sensitive Data Exposure, Broken Access Control và Security Misconfiguration.
+- **Files audited:** `order.service.js`, `order.routes.js`, `customerAuth.middleware.js`, `csrf.middleware.js`, `server.js`.
+- Xem [báo cáo audit chi tiết](SECURITY_AUDIT.md).

@@ -89,6 +89,23 @@ npm run dev
 - `npm run index:products` — lập chỉ mục sản phẩm vào Qdrant.
 - `npm test` — chạy các test Node.js hiện có.
 
+## 🧠 AI Tooling
+
+Cài skill bảo mật cho GitHub Copilot:
+
+```bash
+npx skills add rightcodehere/skills --skill rc-codeprobe-security -a github-copilot
+```
+
+Các skill cốt lõi hiện có:
+
+- **BE core:** `rc-api-forge`, `rc-auth-architect`, `rc-code-review`, `rc-tdd`.
+- **Audit:** `rc-codeprobe-security`, `rc-codeprobe-architecture`, `rc-codeprobe-performance`, `rc-codeprobe-error-handling`.
+- **Git:** `rc-git-guardrails`, `rc-git-commit-push`.
+- **Security:** `scar-tissue`, `security-baseline`, `ai-repo-safety`.
+
+Xem [hướng dẫn setup skill chi tiết](docs/DEVELOPMENT_SETUP.md), bao gồm các reference dùng chung và lưu ý bảo mật khi cài.
+
 ## ⚠️ Checklist trước khi deploy production
 - [ ] Đặt `RATE_LIMIT_ENABLED=true` trong `.env` (hiện đang `false` để dev test)
 - [ ] Đặt `COOKIE_SECURE=true` (production dùng HTTPS)
