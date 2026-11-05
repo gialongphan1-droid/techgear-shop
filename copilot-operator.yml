@@ -1,0 +1,29 @@
+workspace: .
+mode: agent
+goalProfile: default
+maxIterations: 6
+pollIntervalSeconds: 2
+sessionTimeoutSeconds: 900
+quietPeriodPolls: 2
+targetScore: 10
+failOnBlockers:
+  - critical
+  - high
+codeCommandRetries: 2
+codeCommandRetryDelaySeconds: 2
+logRetentionRuns: 20
+memoryFile: .copilot-operator/memory.md
+stateFile: .copilot-operator/state.json
+summaryFile: .copilot-operator/session-summary.json
+logDir: .copilot-operator/logs
+
+# Thêm dòng này để báo cho Agent biết đây là dự án Node.js
+ecosystem: node 
+
+validation:
+  - name: syntax_check
+    command: "node --check src/backend/services/userAuth.service.js" # Lệnh kiểm tra cú pháp
+    required: true # BẮT BUỘC PASS mới cho dừng
+    timeoutSeconds: 60
+    runBeforePrompt: false # Không chạy trước khi làm việc
+    runAfterResponse: true # Chạy sau khi sửa code xong

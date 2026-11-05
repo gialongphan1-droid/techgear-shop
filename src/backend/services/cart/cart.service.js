@@ -96,6 +96,7 @@ async function formatCart(cart) {
       brand: product?.brand || null,
       image: product?.images?.find((image) => image.isPrimary)?.url || product?.images?.[0]?.url || null,
       quantity,
+      note: item.note ?? "",
       unitPrice: product ? effectivePrice : null,
       subtotal: lineSubtotal,
       valid: !invalidReason && Boolean(product),
@@ -135,8 +136,12 @@ export async function addCartItem(req, payload) {
   if (nextQuantity > product.stock) throw serviceError(422, "Tồn kho không đủ cho số lượng yêu cầu");
   if (!currentItem && cart.items.length >= MAX_ITEMS) throw serviceError(422, "Giỏ hàng tối đa 20 dòng sản phẩm");
 
-  if (currentItem) currentItem.quantity = nextQuantity;
-  else cart.items.push({ productId: product._id, quantity: payload.quantity });
+  if (currentItem) {
+    currentItem.quantity = nextQuantity;
+    if (Object.prototype.hasOwnProperty.call(payload, "note")) currentItem.note = payload.note;
+  } else {
+    cart.items.push({ productId: product._id, quantity: payload.quantity, note: payload.note ?? "" });
+  }
   await refreshCart(cart);
   return formatCart(cart);
 }
@@ -156,6 +161,7 @@ export async function updateCartItem(req, payload, productId) {
     if (payload.quantity > product.stock) throw serviceError(422, "Tồn kho không đủ cho số lượng yêu cầu");
     item.quantity = payload.quantity;
   }
+  if (Object.prototype.hasOwnProperty.call(payload, "note")) item.note = payload.note;
   await refreshCart(cart);
   return formatCart(cart);
 }

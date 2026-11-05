@@ -15,3 +15,9 @@ coverage/
 .cache/
 .claude/
 agent/
+
+# Copilot Orchestrator temporary files
+.orchestrator/
+.worktrees/
+.copilot-operator/
+__pycache__/

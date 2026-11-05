@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "postman-api-http-server": {
+      "type": "http",
+      "url": "https://mcp.postman.com/minimal",
+      "headers": {
+        "Authorization": "Bearer ${env:POSTMAN_API_KEY}"
+      }
+    },
+    "graphify": {
+      "type": "stdio",
+      "command": "C:\\Users\\ASUS\\AppData\\Local\\pipx\\pipx\\venvs\\graphifyy\\Scripts\\graphify-mcp.exe",
+      "args": []
+    }
+  }
+}
