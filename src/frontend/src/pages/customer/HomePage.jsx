@@ -1,35 +1,37 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Cpu } from "lucide-react";
 import { Link } from "react-router-dom";
 import ProductCard from "../../components/storefront/ProductCard.jsx";
 import {
   getStorefrontBanners,
-  getStorefrontCategories,
   getStorefrontProducts,
 } from "../../services/storefrontService.js";
 
+const GodLightsHero = lazy(() =>
+  import("../../components/god-lights-hero.jsx").then((module) => ({
+    default: module.GodLightsHero,
+  })),
+);
+
 export default function HomePage() {
   const [banners, setBanners] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [newProducts, setNewProducts] = useState([]);
   const [status, setStatus] = useState("loading");
-  const [activeBanner, setActiveBanner] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     Promise.all([
       getStorefrontBanners(),
-      getStorefrontCategories(),
       getStorefrontProducts({ limit: 8, sort: "popular" }),
       getStorefrontProducts({ limit: 8, sort: "newest" }),
     ])
-      .then(([bannerResponse, categoryResponse, featuredResponse, newResponse]) => {
+      .then(([bannerResponse, featuredResponse, newResponse]) => {
         if (!active) return;
         setBanners(bannerResponse.data.items || []);
-        setCategories(categoryResponse.data.items || []);
         setFeaturedProducts(featuredResponse.data.items || []);
         setNewProducts(newResponse.data.items || []);
         setStatus("ready");
@@ -42,15 +44,6 @@ export default function HomePage() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (banners.length < 2) return undefined;
-    const timer = window.setInterval(
-      () => setActiveBanner((current) => (current + 1) % banners.length),
-      6000,
-    );
-    return () => window.clearInterval(timer);
-  }, [banners.length]);
 
   if (status === "loading") {
     return (
@@ -65,12 +58,6 @@ export default function HomePage() {
         </Helmet>
         <div className="mx-auto max-w-7xl animate-pulse space-y-8 px-4 py-8 sm:px-6 lg:px-8" role="status">
           <div className="h-64 rounded-3xl bg-slate-200 sm:h-96" />
-          <div className="h-10 w-56 rounded bg-slate-200" />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="h-60 rounded-2xl bg-slate-200" />
-            ))}
-          </div>
           <span className="sr-only">Đang tải dữ liệu cửa hàng...</span>
         </div>
       </>
@@ -105,8 +92,6 @@ export default function HomePage() {
     );
   }
 
-  const banner = banners[activeBanner];
-
   return (
     <>
       <Helmet>
@@ -118,99 +103,7 @@ export default function HomePage() {
         <link rel="canonical" href={`${window.location.origin}/`} />
       </Helmet>
       <div>
-      {banner && (
-        <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
-          <div className="relative grid min-h-[420px] overflow-hidden rounded-xl bg-ink md:grid-cols-[1fr_0.92fr]">
-            <div className="flex flex-col items-start justify-center px-7 py-10 text-white sm:px-12 lg:px-16">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-300 sm:text-sm">
-                Thiết bị chọn lọc · Trải nghiệm vượt trội
-              </p>
-              <h1 className="mt-5 max-w-xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-                {banner.title}
-              </h1>
-              <p className="mt-4 max-w-md text-sm leading-7 text-slate-300 sm:text-base">
-                Khám phá những lựa chọn công nghệ phù hợp cho công việc, học tập và giải trí.
-              </p>
-              <Link
-                to={banner.linkUrl}
-                className="group mt-8 inline-flex min-h-12 items-center gap-3 border-b border-brand-400 pb-1 text-sm font-semibold text-white transition-colors hover:text-brand-300"
-                aria-label={banner.title}
-              >
-                Khám phá bộ sưu tập
-                <ArrowUpRight size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </Link>
-            </div>
-            <div className="relative min-h-56 overflow-hidden bg-slate-800 md:min-h-full">
-              <BannerArtwork
-                key={banner._id || banner.imageUrl || banner.title}
-                imageUrl={banner.imageUrl}
-              />
-              <div className="absolute inset-0 bg-ink/10" />
-            </div>
-            {banners.length > 1 && (
-              <div className="absolute bottom-5 left-7 z-10 flex items-center gap-3 sm:left-12 lg:left-16">
-                <span className="text-xs font-medium tabular-nums text-slate-300">
-                  {String(activeBanner + 1).padStart(2, "0")} / {String(banners.length).padStart(2, "0")}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Banner trước"
-                  className="grid h-10 w-10 place-items-center rounded-md border border-white/20 text-white transition hover:border-white/50 hover:bg-white/10"
-                  onClick={() =>
-                    setActiveBanner((activeBanner - 1 + banners.length) % banners.length)
-                  }
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Banner tiếp theo"
-                  className="grid h-10 w-10 place-items-center rounded-md border border-white/20 text-white transition hover:border-white/50 hover:bg-white/10"
-                  onClick={() => setActiveBanner((activeBanner + 1) % banners.length)}
-                >
-                  <ArrowRight size={18} />
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-              Khám phá theo nhu cầu
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-              Danh mục sản phẩm
-            </h2>
-          </div>
-          <Link to="/products" className="hidden text-sm font-semibold text-brand-700 transition hover:text-brand-800 sm:inline">
-            Tất cả danh mục
-          </Link>
-        </div>
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((category) => (
-            <Link
-              key={category._id}
-              to={`/products?category=${encodeURIComponent(category.slug)}`}
-              className="group flex min-h-28 items-center gap-4 rounded-lg border border-slate-200/80 bg-white p-4 transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft sm:p-5"
-            >
-              <CategoryArtwork
-                key={category._id || category.slug}
-                category={category}
-              />
-              <span className="min-w-0">
-                <span className="block font-semibold leading-5 text-ink">{category.name}</span>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition group-hover:text-brand-700">
-                  Xem sản phẩm <ArrowUpRight size={13} />
-                </span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {banners.length > 0 && <BannerCarousel banners={banners} />}
 
       <ProductSection
         eyebrow="Được lựa chọn nhiều"
@@ -224,6 +117,173 @@ export default function HomePage() {
       />
       </div>
     </>
+  );
+}
+
+function BannerCarousel({ banners }) {
+  const [viewportRef, emblaApi] = useEmblaCarousel({ loop: banners.length > 1 });
+  const [activeBanner, setActiveBanner] = useState(0);
+  const [isPointerOver, setIsPointerOver] = useState(false);
+  const [hasFocus, setHasFocus] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const banner = banners[activeBanner];
+  const snapCount = emblaApi?.scrollSnapList().length || banners.length;
+  const isPaused = isPointerOver || hasFocus;
+
+  useEffect(() => {
+    if (!emblaApi) return undefined;
+
+    const updateActiveBanner = () => setActiveBanner(emblaApi.selectedScrollSnap());
+    updateActiveBanner();
+    emblaApi.on("select", updateActiveBanner);
+    emblaApi.on("reInit", updateActiveBanner);
+
+    return () => {
+      emblaApi.off("select", updateActiveBanner);
+      emblaApi.off("reInit", updateActiveBanner);
+    };
+  }, [emblaApi]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotionPreference = (event) => setPrefersReducedMotion(event.matches);
+
+    setPrefersReducedMotion(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateMotionPreference);
+    return () => mediaQuery.removeEventListener("change", updateMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (!emblaApi || banners.length < 2 || isPaused || prefersReducedMotion) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => emblaApi.scrollNext(), 6000);
+    return () => window.clearInterval(timer);
+  }, [emblaApi, banners.length, isPaused, prefersReducedMotion]);
+
+  const scrollTo = (index) => {
+    emblaApi?.scrollTo(index, prefersReducedMotion);
+  };
+
+  const handleBlur = (event) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) setHasFocus(false);
+  };
+
+  return (
+    <section
+      className="relative isolate overflow-hidden bg-ink text-white"
+      role="region"
+      aria-label="Banner nổi bật"
+      aria-roledescription="carousel"
+      onMouseEnter={() => setIsPointerOver(true)}
+      onMouseLeave={() => setIsPointerOver(false)}
+      onFocusCapture={() => setHasFocus(true)}
+      onBlurCapture={handleBlur}
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-20"
+      >
+        <Suspense fallback={null}>
+          <GodLightsHero
+            animated={!prefersReducedMotion}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none",
+            }}
+          />
+        </Suspense>
+      </div>
+      <div className="absolute inset-0 z-0" ref={viewportRef}>
+        <div className="flex h-full touch-pan-y">
+          {banners.map((item, index) => (
+            <div
+              key={item._id || item.imageUrl || item.title}
+              className="relative min-w-0 flex-[0_0_100%]"
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} / ${banners.length}`}
+              aria-hidden="true"
+            >
+              <BannerArtwork
+                key={item._id || item.imageUrl || item.title}
+                imageUrl={item.imageUrl}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-ink/90 via-ink/45 to-ink/20 md:bg-gradient-to-r md:from-ink/85 md:via-ink/40 md:to-ink/10" />
+
+      <div className="relative z-30 mx-auto flex min-h-[420px] max-w-7xl flex-col items-start justify-center px-5 py-20 sm:min-h-[460px] sm:px-10 sm:py-24 lg:min-h-[500px] lg:px-14">
+        <div
+          key={banner._id || banner.title || activeBanner}
+          className="hero-copy-enter"
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`Slide ${activeBanner + 1} of ${banners.length}`}
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-300 sm:text-sm">
+            Công nghệ cho nhịp sống hiện đại
+          </p>
+          <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-[1.08] tracking-tight text-white sm:mt-5 sm:text-4xl lg:text-6xl">
+            {banner.title}
+          </h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-white/80 sm:mt-5 sm:text-base sm:leading-7">
+            Khám phá lựa chọn công nghệ phù hợp cho công việc, học tập và giải trí.
+          </p>
+        </div>
+      </div>
+
+      {banners.length > 1 && (
+        <div className="absolute inset-x-0 bottom-5 z-30 mx-auto flex max-w-7xl items-center justify-between px-6 sm:px-10 lg:px-14">
+          <div className="flex items-center gap-3">
+            <span aria-hidden="true" className="text-xs font-medium tabular-nums text-white/80">
+              {String(activeBanner + 1).padStart(2, "0")} / {String(banners.length).padStart(2, "0")}
+            </span>
+            <div role="group" aria-label="Chọn banner" className="flex items-center gap-1.5">
+              {Array.from({ length: snapCount }, (_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`Hiển thị banner ${index + 1}`}
+                  aria-current={activeBanner === index ? "true" : undefined}
+                  className={`h-2.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink ${
+                    activeBanner === index ? "w-7 bg-brand-400" : "w-2.5 bg-white/50 hover:bg-white/80"
+                  }`}
+                  onClick={() => scrollTo(index)}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Banner trước"
+              className="grid h-10 w-10 place-items-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+              onClick={() => scrollTo((activeBanner - 1 + snapCount) % snapCount)}
+            >
+              <ArrowLeft size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Banner tiếp theo"
+              className="grid h-10 w-10 place-items-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+              onClick={() => scrollTo((activeBanner + 1) % snapCount)}
+            >
+              <ArrowRight size={18} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -248,37 +308,9 @@ function BannerArtwork({ imageUrl }) {
     <img
       src={imageUrl}
       alt=""
-      className="absolute inset-0 h-full w-full object-cover transition duration-700 hover:scale-[1.02]"
+      className="absolute inset-0 h-full w-full object-cover object-center"
       onError={() => setFailed(true)}
     />
-  );
-}
-
-function CategoryArtwork({ category }) {
-  const [failed, setFailed] = useState(!category.iconUrl);
-  const initial = Array.from(category.name?.trim() || "?")[0].toLocaleUpperCase("vi");
-
-  if (failed) {
-    return (
-      <span
-        className="grid h-16 w-16 shrink-0 place-items-center rounded-md bg-brand-50 text-xl font-semibold text-brand-700 ring-1 ring-brand-100"
-        aria-hidden="true"
-      >
-        {initial}
-      </span>
-    );
-  }
-
-  return (
-    <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-slate-50">
-      <img
-        src={category.iconUrl}
-        alt=""
-        loading="lazy"
-        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-        onError={() => setFailed(true)}
-      />
-    </span>
   );
 }
 

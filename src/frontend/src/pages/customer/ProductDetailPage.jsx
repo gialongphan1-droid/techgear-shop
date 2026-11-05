@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Scale, ShoppingCart } from "lucide-react";
+import { Check, Minus, Plus, Scale, ShoppingCart } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -28,6 +28,10 @@ const formatPrice = (price) =>
     maximumFractionDigits: 0,
   }).format(price);
 
+const showToast = (message) => {
+  window.dispatchEvent(new CustomEvent("app:toast", { detail: message }));
+};
+
 export default function ProductDetailPage() {
   const { slug } = useParams();
   const dispatch = useDispatch();
@@ -38,12 +42,20 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState("loading");
   const [activeImage, setActiveImage] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [similarProducts, setSimilarProducts] = useState([]);
   const [similarStatus, setSimilarStatus] = useState("idle");
 
   useEffect(() => {
+    if (product) {
+      console.log(product);
+    }
+  }, [product]);
+
+  useEffect(() => {
     let active = true;
     setStatus("loading");
+    setQuantity(1);
     getStorefrontProductBySlug(slug)
       .then((response) => {
         if (!active) return;
@@ -142,8 +154,35 @@ export default function ProductDetailPage() {
 
   const images = product.images || [];
   const image = images[activeImage]?.url || images[0]?.url;
+  const hasStockValue =
+    product.stock !== undefined &&
+    product.stock !== null &&
+    product.stock !== "";
+  const stockCount = hasStockValue ? Number(product.stock) : null;
+  const isAvailable =
+    product.status === "ACTIVE" &&
+    (!hasStockValue ||
+      (Number.isFinite(stockCount) && stockCount > 0));
 
-  const handleAddToCart = async () => {
+  const handleQuantityChange = (nextQuantity) => {
+    if (nextQuantity > 10) {
+      showToast("Mỗi sản phẩm chỉ có thể mua tối đa 10 món.");
+      return;
+    }
+    if (hasStockValue && nextQuantity > stockCount) {
+      showToast(`Chỉ còn ${stockCount} sản phẩm trong kho.`);
+      return;
+    }
+    setQuantity(Math.max(1, nextQuantity));
+  };
+
+  const handlePurchase = async (buyNow = false) => {
+    if (!isAvailable || cartStatus === "loading") return;
+    if (hasStockValue && quantity > stockCount) {
+      showToast(`Chỉ còn ${stockCount} sản phẩm trong kho.`);
+      return;
+    }
+
     if (!customer) {
       navigate("/login", {
         state: { returnTo: `/products/${product.slug}` },
@@ -154,14 +193,11 @@ export default function ProductDetailPage() {
     try {
       const response = await addCustomerCartItem({
         productId: product._id,
-        quantity: 1,
+        quantity,
       });
       dispatch(setCartData(response.data.data));
-      window.dispatchEvent(
-        new CustomEvent("app:toast", {
-          detail: `${product.name} đã được thêm vào giỏ hàng.`,
-        }),
-      );
+      showToast(`${product.name} đã được thêm vào giỏ hàng.`);
+      if (buyNow) navigate("/checkout");
     } catch (error) {
       try {
         const cartResponse = await getCustomerCart();
@@ -169,12 +205,9 @@ export default function ProductDetailPage() {
       } catch {
         // Keep the original cart mutation error visible to the user.
       }
-      window.dispatchEvent(
-        new CustomEvent("app:toast", {
-          detail:
-            error.response?.data?.message ||
-            "Không thể thêm sản phẩm vào giỏ hàng.",
-        }),
+      showToast(
+        error.response?.data?.message ||
+          "Không thể thêm sản phẩm vào giỏ hàng.",
       );
     }
   };
@@ -188,19 +221,13 @@ export default function ProductDetailPage() {
       return;
     }
     if (compareProducts.length >= MAX_COMPARE_PRODUCTS) {
-      window.dispatchEvent(
-        new CustomEvent("app:toast", {
-          detail: `Chỉ có thể so sánh tối đa ${MAX_COMPARE_PRODUCTS} sản phẩm.`,
-        }),
+      showToast(
+        `Chỉ có thể so sánh tối đa ${MAX_COMPARE_PRODUCTS} sản phẩm.`,
       );
       return;
     }
     dispatch(addCompareProduct(product));
-    window.dispatchEvent(
-      new CustomEvent("app:toast", {
-        detail: `${product.name} đã được thêm vào so sánh.`,
-      }),
-    );
+    showToast(`${product.name} đã được thêm vào so sánh.`);
   };
 
   return (
@@ -268,34 +295,93 @@ export default function ProductDetailPage() {
               </span>
             )}
           </div>
-          <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-emerald-700">
-            <Check size={18} />
-            {product.stock > 0 ? "Sẵn sàng giao hàng" : "Tạm hết hàng"}
+          <p
+            role="status"
+            className={`mt-4 flex items-center gap-2 text-sm font-semibold ${
+              isAvailable ? "text-emerald-700" : "text-red-700"
+            }`}
+          >
+            {isAvailable && <Check size={18} aria-hidden="true" />}
+            {isAvailable
+              ? hasStockValue
+                ? "Còn hàng"
+                : "Đang kinh doanh"
+              : product.status === "ACTIVE"
+                ? "Hết hàng"
+                : "Ngừng kinh doanh"}
           </p>
           {product.warranty && (
             <p className="mt-2 text-sm text-slate-600">
               Bảo hành: {product.warranty}
             </p>
           )}
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-7 space-y-3">
+            <div className="flex items-center gap-4">
+              <span
+                id="product-quantity-label"
+                className="text-sm font-semibold text-slate-700"
+              >
+                Số lượng
+              </span>
+              <div
+                role="group"
+                aria-labelledby="product-quantity-label"
+                className="inline-flex h-10 items-center rounded-lg border border-slate-200"
+              >
+                <button
+                  type="button"
+                  aria-label="Giảm số lượng"
+                  disabled={!isAvailable || cartStatus === "loading" || quantity <= 1}
+                  className="grid h-9 w-9 place-items-center rounded-l-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => handleQuantityChange(quantity - 1)}
+                >
+                  <Minus size={16} aria-hidden="true" />
+                </button>
+                <span
+                  aria-live="polite"
+                  aria-atomic="true"
+                  className="min-w-10 text-center text-sm font-bold text-slate-900"
+                >
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Tăng số lượng"
+                  disabled={!isAvailable || cartStatus === "loading" || quantity >= 10}
+                  className="grid h-9 w-9 place-items-center rounded-r-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => handleQuantityChange(quantity + 1)}
+                >
+                  <Plus size={16} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                disabled={!isAvailable || cartStatus === "loading"}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:flex-1"
+                onClick={() => handlePurchase()}
+              >
+                <ShoppingCart size={19} aria-hidden="true" />
+                {cartStatus === "loading"
+                  ? "Đang đồng bộ giỏ hàng..."
+                  : "Thêm vào giỏ hàng"}
+              </button>
+              <button
+                type="button"
+                disabled={!isAvailable || cartStatus === "loading"}
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-5 font-bold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:flex-1"
+                onClick={() => handlePurchase(true)}
+              >
+                Mua ngay
+              </button>
+            </div>
             <button
               type="button"
-              disabled={
-                cartStatus === "loading" ||
-                product.status !== "ACTIVE"
-              }
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 font-bold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
-              onClick={handleAddToCart}
-            >
-              <ShoppingCart size={19} />
-              {cartStatus === "loading" ? "Đang đồng bộ giỏ hàng..." : "Thêm vào giỏ hàng"}
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 font-bold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 sm:w-auto"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 font-bold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 sm:w-auto"
               onClick={handleCompare}
             >
-              <Scale size={18} />
+              <Scale size={18} aria-hidden="true" />
               {compareProducts.some(
                 (item) => (item._id || item.slug) === (product._id || product.slug),
               )
