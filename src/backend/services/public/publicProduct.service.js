@@ -12,14 +12,28 @@ function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function publicProduct(product) {
+function serializePublicProduct(product) {
   const item = typeof product.toObject === "function" ? product.toObject() : { ...product };
-  delete item.stock;
   delete item.viewCount;
   delete item.updatedAt;
   if (Array.isArray(item.images)) {
     item.images = item.images.map(({ url, isPrimary }) => ({ url, isPrimary }));
+  } else {
+    item.images = [];
   }
+  if (!Array.isArray(item.specs)) {
+    item.specs = [];
+  }
+
+  const parsedStock = Number(item.stock);
+  item.stock = item.stock == null || !Number.isFinite(parsedStock)
+    ? 0
+    : Math.max(0, Math.trunc(parsedStock));
+
+  const parsedPrice = Number(item.price ?? item.listPrice);
+  item.price = item.price == null && !Number.isFinite(parsedPrice) ? 0 : parsedPrice;
+  item.salePrice = item.salePrice ?? null;
+  item.status = "ACTIVE";
   return item;
 }
 
@@ -103,7 +117,7 @@ export async function listPublicProducts(query = {}) {
   const dbStart = Date.now();
   const [result, total] = await Promise.all([
     Product.find(filter)
-      .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
+      .select("name slug categoryId brand listPrice salePrice stock status images specs warranty seo createdAt")
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit + 1)
@@ -115,7 +129,7 @@ export async function listPublicProducts(query = {}) {
   const hasNextPage = result.length > limit;
   const items = hasNextPage ? result.slice(0, limit) : result;
   const response = {
-    items: items.map(publicProduct),
+    items: items.map(serializePublicProduct),
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit), hasNextPage },
   };
   myCache.set(cacheKey, response);
@@ -128,7 +142,7 @@ export async function getPublicProductBySlug(slug) {
     throw serviceError(422, "Slug sản phẩm không hợp lệ");
   }
   const product = await Product.findOne({ slug: safeSlug, status: "ACTIVE" })
-    .select("name slug categoryId brand listPrice salePrice status images specs warranty seo viewCount createdAt")
+    .select("_id name slug categoryId brand listPrice salePrice stock status images specs warranty seo viewCount createdAt")
     .populate("categoryId", "name slug isActive")
     .lean();
   if (!product || !product.categoryId || !product.categoryId.isActive) {
@@ -136,5 +150,5 @@ export async function getPublicProductBySlug(slug) {
   }
 
   await Product.updateOne({ _id: product._id }, { $inc: { viewCount: 1 } });
-  return publicProduct(product);
+  return serializePublicProduct(product);
 }

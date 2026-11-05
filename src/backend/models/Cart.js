@@ -5,6 +5,7 @@ const { Schema } = mongoose;
 const cartItemSchema = new Schema({
   productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
   quantity: { type: Number, required: true, min: 1, max: 10, validate: { validator: Number.isInteger, message: "quantity phải là số nguyên" } },
+  note: { type: String, default: "", maxlength: 500 },
 }, { _id: false });
 
 const cartSchema = new Schema({
