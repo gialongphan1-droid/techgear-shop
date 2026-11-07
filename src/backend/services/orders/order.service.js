@@ -351,7 +351,7 @@ export async function listMyOrders(userId, query = {}) {
   const filter = { userId: new mongoose.Types.ObjectId(userId) };
   const [ordersWithNext, [countResult]] = await Promise.all([
     Order.find(filter)
-      .select("orderCode createdAt totalAmount status items.name items.image items.quantity")
+      .select("orderCode createdAt totalAmount status items.name items.image items.quantity items.note")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit + 1)
@@ -371,6 +371,7 @@ export async function listMyOrders(userId, query = {}) {
       name: item.name,
       image: item.image || null,
       quantity: item.quantity,
+      note: item.note || "",
     })),
   }));
   const total = countResult?.total || 0;

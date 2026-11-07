@@ -84,6 +84,7 @@ function serializeAdminOrder(order) {
       price: item.price,
       quantity: item.quantity,
       subtotal: item.subtotal,
+      note: item.note || "",
     })),
     totalAmount: plain.totalAmount,
     shippingFee: plain.shippingFee,
