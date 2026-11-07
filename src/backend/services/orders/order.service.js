@@ -26,6 +26,24 @@ function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
 }
 
+function insufficientStockError(product, requestedQuantity, availableQuantity) {
+  const stock = Math.max(0, Number(availableQuantity) || 0);
+  const message = `Sản phẩm ${product.name} chỉ còn ${stock} sản phẩm`;
+  return serviceError(400, message, [
+    {
+      field: `items.${product._id?.toString() || product.productId?.toString() || product.id?.toString() || ""}`,
+      message,
+    },
+  ], {
+    items: [{
+      productId: product._id?.toString() || product.productId?.toString() || null,
+      name: product.name,
+      requestedQuantity,
+      availableQuantity: stock,
+    }],
+  });
+}
+
 async function findCheckoutCart(req, session) {
   let query = Cart.findOne({
     userId: req.user.id,
@@ -101,7 +119,7 @@ function normalizeCartItems(cart) {
         items: [{ productId, quantity, maxQuantity: MAX_QUANTITY_PER_ITEM }],
       });
     }
-    merged.set(productId, { productId, quantity });
+    merged.set(productId, { productId, quantity, note: typeof item.note === "string" ? item.note : "" });
   }
 
   return Array.from(merged.values());
@@ -165,11 +183,11 @@ async function validateCartState(cart, session, options = {}) {
     const stockItems = [];
     for (const item of normalizedItems) {
       const product = productMap.get(item.productId);
-      const availableQuantity = Math.max(0, Math.min(MAX_QUANTITY_PER_ITEM, Number(product.stock) || 0));
+      const availableQuantity = Math.max(0, Number(product.stock) || 0);
       if (item.quantity > product.stock) {
         stockErrors.push({
           field: `items.${item.productId}`,
-          message: "Số lượng vượt quá tồn kho hiện tại",
+          message: `Sản phẩm ${product.name} chỉ còn ${availableQuantity} sản phẩm`,
         });
         stockItems.push({
           productId: item.productId,
@@ -180,7 +198,7 @@ async function validateCartState(cart, session, options = {}) {
       }
     }
     if (stockErrors.length > 0) {
-      throw serviceError(422, "Tồn kho không đủ để tạo đơn hàng", stockErrors, { items: stockItems });
+      throw serviceError(400, stockErrors[0].message, stockErrors, { items: stockItems });
     }
   }
 
@@ -196,6 +214,7 @@ async function validateCartState(cart, session, options = {}) {
       unitPrice,
       quantity: item.quantity,
       subtotal,
+      note: typeof item.note === "string" ? item.note : "",
     };
   });
   const totalAmount = roundMoney(items.reduce((sum, item) => sum + item.subtotal, 0));
@@ -403,6 +422,7 @@ async function createOrderDocument(validated, customerInfo, idempotencyKey, orde
       price: item.unitPrice,
       quantity: item.quantity,
       subtotal: item.subtotal,
+      note: typeof item.note === "string" ? item.note : "",
     })),
     totalAmount: validated.totalAmount,
     shippingFee: 0,
@@ -474,18 +494,11 @@ async function createWithTransaction(cart, payload, customerInfo, userId) {
 
           if (!updated) {
             let current = await Product.findById(product._id).select("name stock").session(session).lean();
-            const availableQuantity = Math.max(0, Math.min(MAX_QUANTITY_PER_ITEM, Number(current?.stock) || 0));
-            throw serviceError(422, "Tồn kho không đủ để tạo đơn hàng", [{
-              field: `items.${product._id.toString()}`,
-              message: "Số lượng vượt quá tồn kho hiện tại",
-            }], {
-              items: [{
-                productId: product._id.toString(),
-                name: product.name,
-                requestedQuantity: item.quantity,
-                availableQuantity,
-              }],
-            });
+            throw insufficientStockError(
+              { _id: product._id, name: current?.name || product.name },
+              item.quantity,
+              current?.stock,
+            );
           }
 
           stockChanges.push({
@@ -609,18 +622,11 @@ async function createWithoutTransaction(cart, payload, customerInfo, userId) {
       ).select("stock");
       if (!updated) {
         const stockAfterRead = await Product.findById(currentProduct._id).select("stock name");
-        const availableQuantity = Math.max(0, Math.min(MAX_QUANTITY_PER_ITEM, Number(stockAfterRead?.stock) || 0));
-        throw serviceError(422, "Tồn kho không đủ để tạo đơn hàng", [{
-          field: `items.${item.productId}`,
-          message: "Số lượng vượt quá tồn kho hiện tại",
-        }], {
-          items: [{
-            productId: item.productId,
-            name: currentProduct.name,
-            requestedQuantity: item.quantity,
-            availableQuantity,
-          }],
-        });
+        throw insufficientStockError(
+          { _id: currentProduct._id, name: stockAfterRead?.name || currentProduct.name },
+          item.quantity,
+          stockAfterRead?.stock,
+        );
       }
       decrements.push({
         productId: currentProduct._id,

@@ -21,7 +21,9 @@ export async function sendVerificationEmail(email, token) {
         service: "gmail",
         auth: { user, pass },
       });
-  const verificationUrl = `http://localhost:5173/verify-email?token=${encodeURIComponent(token)}`;
+
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  const verificationUrl = `${clientUrl}/verify-email?token=${encodeURIComponent(token)}`;
 
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || user || "TechGear Shop <no-reply@localhost>",

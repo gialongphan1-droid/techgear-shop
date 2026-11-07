@@ -15,6 +15,12 @@ function serviceError(status, message, errors = []) {
   return error;
 }
 
+export function validateCartStockQuantity(nextQuantity, stock) {
+  if (Number.isInteger(nextQuantity) && nextQuantity > stock) {
+    throw serviceError(400, "Số lượng vượt quá tồn kho hiện tại");
+  }
+}
+
 async function findCart(req) {
   const cart = await Cart.findOne({
     userId: req.user.id,
@@ -133,7 +139,7 @@ export async function addCartItem(req, payload) {
   const currentItem = cart.items.find((item) => item.productId.toString() === product._id.toString());
   const nextQuantity = (currentItem?.quantity || 0) + payload.quantity;
   if (!Number.isInteger(nextQuantity) || nextQuantity > MAX_QUANTITY) throw serviceError(422, "Số lượng mỗi sản phẩm tối đa là 10");
-  if (nextQuantity > product.stock) throw serviceError(422, "Tồn kho không đủ cho số lượng yêu cầu");
+  validateCartStockQuantity(nextQuantity, product.stock);
   if (!currentItem && cart.items.length >= MAX_ITEMS) throw serviceError(422, "Giỏ hàng tối đa 20 dòng sản phẩm");
 
   if (currentItem) {
@@ -158,7 +164,7 @@ export async function updateCartItem(req, payload, productId) {
   } else {
     const product = await Product.findById(productId).populate("categoryId", "isActive");
     if (!product || product.status !== "ACTIVE" || !product.categoryId?.isActive) throw serviceError(422, "Sản phẩm không đủ điều kiện đặt mua");
-    if (payload.quantity > product.stock) throw serviceError(422, "Tồn kho không đủ cho số lượng yêu cầu");
+    validateCartStockQuantity(payload.quantity, product.stock);
     item.quantity = payload.quantity;
   }
   if (Object.prototype.hasOwnProperty.call(payload, "note")) item.note = payload.note;

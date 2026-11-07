@@ -10,6 +10,7 @@ const orderItemSchema = new Schema({
   price: { type: Number, required: true, min: 0 },
   quantity: { type: Number, required: true, min: 1, validate: { validator: Number.isInteger, message: "quantity phải là số nguyên" } },
   subtotal: { type: Number, required: true, min: 0 },
+  note: { type: String, default: "" },
 }, { _id: false });
 
 const customerInfoSchema = new Schema({
