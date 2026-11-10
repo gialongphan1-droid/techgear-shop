@@ -305,16 +305,13 @@ export default function MyOrdersPage() {
               />
               <DetailRow
                 label="Số lượng sản phẩm"
-                value={`${selectedOrder.itemCount || 0} sản phẩm`}
+                value={`${selectedOrder.itemCount ?? 0} sản phẩm`}
               />
               <DetailRow
                 label="Tổng tiền"
                 value={currency.format(selectedOrder.totalAmount || 0)}
               />
             </dl>
-            <p className="mt-4 text-xs leading-5 text-slate-500">
-              Thông tin chi tiết sản phẩm trong đơn không được cung cấp từ API lịch sử hiện tại.
-            </p>
           </section>
         </div>
       )}
@@ -330,12 +327,7 @@ function PreviewItems({ order }) {
   if (!previewItems.length) return null;
 
   return (
-    <div
-      className={`flex shrink-0 items-start ${
-        previewItems.length === 1 ? "sm:w-44" : "gap-2 sm:w-56"
-      }`}
-      aria-label={`Ảnh ${previewItems.length} sản phẩm trong đơn hàng`}
-    >
+    <ul className="flex shrink-0 flex-col gap-3 sm:w-56" aria-label="Sản phẩm xem trước">
       {previewItems.map((item, index) => {
         const name = item.name || "Sản phẩm";
         const image =
@@ -344,25 +336,32 @@ function PreviewItems({ order }) {
             : imagePlaceholder;
 
         return (
-          <img
+          <li
             key={`${name}-${index}`}
-            src={image}
-            alt={`Ảnh sản phẩm: ${name}`}
-            title={name}
-            loading="lazy"
-            className={`block shrink-0 rounded-md border border-slate-200 bg-slate-100 object-cover shadow-sm transition duration-200 hover:z-10 hover:scale-105 ${
-              previewItems.length === 1
-                ? "h-28 w-28 sm:h-36 sm:w-36"
-                : "h-14 w-14 sm:h-16 sm:w-16"
-            }`}
-            onError={(event) => {
-              event.currentTarget.onerror = null;
-              event.currentTarget.src = imageFallback;
-            }}
-          />
+            className="flex items-start gap-3"
+          >
+            <img
+              src={image}
+              alt={`Ảnh sản phẩm: ${name}`}
+              loading="lazy"
+              className="h-14 w-14 shrink-0 rounded-md border border-slate-200 bg-slate-100 object-cover sm:h-16 sm:w-16"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = imageFallback;
+              }}
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-800">{name}</p>
+              {item.note && (
+                <p className="mt-1 whitespace-pre-wrap text-xs italic text-slate-500">
+                  {item.note}
+                </p>
+              )}
+            </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 

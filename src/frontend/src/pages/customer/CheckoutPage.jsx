@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { LoaderCircle, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, Navigate, useNavigate } from "react-router-dom";
@@ -19,6 +19,10 @@ const formatPrice = (price) =>
     maximumFractionDigits: 0,
   }).format(price);
 
+const showToast = (message) => {
+  window.dispatchEvent(new CustomEvent("app:toast", { detail: message }));
+};
+
 export default function CheckoutPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -26,6 +30,7 @@ export default function CheckoutPage() {
   const idempotencyKey = useRef(null);
   const orderSubmitted = useRef(false);
   const [submitError, setSubmitError] = useState("");
+  const [stockError, setStockError] = useState("");
   const {
     register,
     handleSubmit,
@@ -40,6 +45,16 @@ export default function CheckoutPage() {
       message: "Số điện thoại phải bắt đầu bằng 0 và gồm đúng 10 chữ số.",
     },
   });
+
+  useEffect(() => {
+    if (!stockError) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setStockError("");
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [stockError]);
+
   if ((!items.length || items.some((item) => !item.valid)) && !orderSubmitted.current) {
     return <Navigate to="/cart" replace />;
   }
@@ -75,7 +90,12 @@ export default function CheckoutPage() {
     } catch (error) {
       const serverMessage = error.response?.data?.message || "";
       const fieldErrors = error.response?.data?.errors || [];
-      if (
+      if (error.response?.status === 400) {
+        setStockError(
+          serverMessage || "Một sản phẩm trong giỏ đã hết hàng hoặc không đủ số lượng.",
+        );
+        return;
+      } else if (
         error.response?.status === 422 &&
         (fieldErrors.some((item) => item.field === "clientTotal") ||
           serverMessage.toLowerCase().includes("clienttotal"))
@@ -97,9 +117,7 @@ export default function CheckoutPage() {
       ) {
         setSubmitError("Giỏ hàng đã trống. Vui lòng chọn sản phẩm trước khi đặt hàng.");
       } else {
-        setSubmitError(
-          serverMessage || "Chưa thể xác nhận đơn hàng. Vui lòng thử lại.",
-        );
+        showToast(serverMessage || "Chưa thể xác nhận đơn hàng. Vui lòng thử lại.");
       }
 
       try {
@@ -262,6 +280,56 @@ export default function CheckoutPage() {
           </p>
         </aside>
       </div>
+
+      {stockError && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setStockError("");
+          }}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="checkout-stock-error-title"
+            aria-describedby="checkout-stock-error-message"
+            className="my-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <h2
+                id="checkout-stock-error-title"
+                className="text-xl font-black text-slate-950"
+              >
+                Không đủ hàng trong kho
+              </h2>
+              <button
+                type="button"
+                aria-label="Đóng thông báo"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setStockError("")}
+              >
+                <X size={19} aria-hidden="true" />
+              </button>
+            </div>
+            <p
+              id="checkout-stock-error-message"
+              className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-700"
+            >
+              {stockError}
+            </p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                autoFocus
+                className="h-10 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2"
+                onClick={() => setStockError("")}
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

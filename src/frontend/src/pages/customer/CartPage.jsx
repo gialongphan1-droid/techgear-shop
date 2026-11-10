@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
@@ -20,12 +20,58 @@ const formatPrice = (price) =>
     maximumFractionDigits: 0,
   }).format(price || 0);
 
+const getCartRequestErrorMessage = (error, fallback) => {
+  const response = error.response;
+  const messages = [response?.data?.message];
+
+  if (
+    [400, 422].includes(response?.status) &&
+    Array.isArray(response.data?.errors)
+  ) {
+    messages.push(...response.data.errors.map((item) => item?.message));
+  }
+
+  const uniqueMessages = [
+    ...new Set(
+      messages.filter(
+        (message) => typeof message === "string" && message.trim(),
+      ),
+    ),
+  ];
+  return uniqueMessages.length > 0 ? uniqueMessages.join(" · ") : fallback;
+};
+
+const showToast = (message) => {
+  window.dispatchEvent(new CustomEvent("app:toast", { detail: message }));
+};
+
 export default function CartPage() {
   const { items, subtotal, itemCount, status, error } = useSelector(
     (state) => state.cart,
   );
   const dispatch = useDispatch();
-  const [busyProductId, setBusyProductId] = useState("");
+  const [busyProductIds, setBusyProductIds] = useState([]);
+  const [notes, setNotes] = useState({});
+  const [noteStatuses, setNoteStatuses] = useState({});
+
+  const markProductBusy = (productId, isBusy) => {
+    setBusyProductIds((current) =>
+      isBusy
+        ? [...new Set([...current, productId])]
+        : current.filter((id) => id !== productId),
+    );
+  };
+
+  useEffect(() => {
+    setNotes((currentNotes) => {
+      const nextNotes = {};
+      items.forEach((item) => {
+        nextNotes[item.productId] =
+          currentNotes[item.productId] ?? item.note ?? "";
+      });
+      return nextNotes;
+    });
+  }, [items]);
 
   const refreshCart = async () => {
     const response = await getCustomerCart();
@@ -33,58 +79,85 @@ export default function CartPage() {
   };
 
   const updateQuantity = async (item, quantity) => {
-    setBusyProductId(item.productId);
+    markProductBusy(item.productId, true);
     try {
       const response = await updateCustomerCartItem(item.productId, { quantity });
       dispatch(setCartData(response.data.data));
     } catch (requestError) {
+      const message = getCartRequestErrorMessage(
+        requestError,
+        "Không thể cập nhật giỏ hàng.",
+      );
       try {
         await refreshCart();
       } catch {
-        dispatch(
-          setCartError(
-            requestError.response?.data?.message ||
-              "Không thể cập nhật giỏ hàng. Vui lòng thử lại.",
-          ),
-        );
+        dispatch(setCartError(message));
       }
-      window.dispatchEvent(
-        new CustomEvent("app:toast", {
-          detail:
-            requestError.response?.data?.message ||
-            "Không thể cập nhật giỏ hàng.",
-        }),
-      );
+      showToast(message);
     } finally {
-      setBusyProductId("");
+      markProductBusy(item.productId, false);
+    }
+  };
+
+  const saveItemNote = async (item, note) => {
+    const savedNote = item.note ?? "";
+    if (busyProductIds.includes(item.productId) || note === savedNote) return;
+
+    const value = note.slice(0, 500);
+    markProductBusy(item.productId, true);
+    setNoteStatuses((current) => ({
+      ...current,
+      [item.productId]: "saving",
+    }));
+
+    try {
+      const response = await updateCustomerCartItem(item.productId, {
+        quantity: item.quantity,
+        note: value,
+      });
+      dispatch(setCartData(response.data.data));
+      setNoteStatuses((current) => ({
+        ...current,
+        [item.productId]: "saved",
+      }));
+    } catch (requestError) {
+      const message = getCartRequestErrorMessage(
+        requestError,
+        "Không thể lưu ghi chú. Vui lòng thử lại.",
+      );
+      try {
+        await refreshCart();
+      } catch {
+        dispatch(setCartError(message));
+      }
+      setNoteStatuses((current) => ({
+        ...current,
+        [item.productId]: "error",
+      }));
+      showToast(message);
+    } finally {
+      markProductBusy(item.productId, false);
     }
   };
 
   const removeItem = async (item) => {
-    setBusyProductId(item.productId);
+    markProductBusy(item.productId, true);
     try {
       const response = await deleteCustomerCartItem(item.productId);
       dispatch(setCartData(response.data.data));
     } catch (requestError) {
+      const message = getCartRequestErrorMessage(
+        requestError,
+        "Không thể xóa sản phẩm khỏi giỏ hàng.",
+      );
       try {
         await refreshCart();
       } catch {
-        dispatch(
-          setCartError(
-            requestError.response?.data?.message ||
-              "Không thể xóa sản phẩm khỏi giỏ hàng.",
-          ),
-        );
+        dispatch(setCartError(message));
       }
-      window.dispatchEvent(
-        new CustomEvent("app:toast", {
-          detail:
-            requestError.response?.data?.message ||
-            "Không thể xóa sản phẩm khỏi giỏ hàng.",
-        }),
-      );
+      showToast(message);
     } finally {
-      setBusyProductId("");
+      markProductBusy(item.productId, false);
     }
   };
 
@@ -174,7 +247,7 @@ export default function CartPage() {
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-3">
           {items.map((item) => {
-            const busy = busyProductId === item.productId;
+            const busy = busyProductIds.includes(item.productId);
             return (
               <article
                 key={item.productId}
@@ -209,6 +282,57 @@ export default function CartPage() {
                       {item.invalidReason || "Sản phẩm không thể đặt mua."}
                     </p>
                   )}
+                  <label className="mt-3 block">
+                    <span className="mb-1 block text-sm font-semibold text-slate-700">
+                      Ghi chú cho sản phẩm
+                    </span>
+                    <textarea
+                      rows={2}
+                      maxLength={500}
+                      value={notes[item.productId] ?? item.note ?? ""}
+                      disabled={busy}
+                      aria-describedby={`cart-note-help-${item.productId} cart-note-status-${item.productId}`}
+                      className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:bg-slate-100 disabled:text-slate-500"
+                      placeholder="Nhập ghi chú (không bắt buộc)"
+                      onChange={(event) => {
+                        const value = event.target.value.slice(0, 500);
+                        setNotes((current) => ({
+                          ...current,
+                          [item.productId]: value,
+                        }));
+                        setNoteStatuses((current) => ({
+                          ...current,
+                          [item.productId]: "",
+                        }));
+                      }}
+                      onBlur={(event) =>
+                        saveItemNote(item, event.currentTarget.value)
+                      }
+                    />
+                    <span
+                      id={`cart-note-help-${item.productId}`}
+                      className="mt-1 block text-xs text-slate-500"
+                    >
+                      {(notes[item.productId] ?? item.note ?? "").length}/500 ký tự
+                    </span>
+                    <span
+                      id={`cart-note-status-${item.productId}`}
+                      aria-live="polite"
+                      className={`mt-1 block text-xs ${
+                        noteStatuses[item.productId] === "error"
+                          ? "text-red-700"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {noteStatuses[item.productId] === "saving"
+                        ? "Đang lưu ghi chú..."
+                        : noteStatuses[item.productId] === "saved"
+                          ? "Đã lưu ghi chú"
+                          : noteStatuses[item.productId] === "error"
+                            ? "Chưa lưu được ghi chú"
+                            : ""}
+                    </span>
+                  </label>
                   <div className="mt-3 flex items-center justify-between gap-3 sm:hidden">
                     <QuantityControl
                       item={item}

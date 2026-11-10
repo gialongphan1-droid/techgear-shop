@@ -173,13 +173,12 @@ export default function AdminProductListPage() {
         <>
           <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[850px] text-left text-sm">
+              <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-bold">Sản phẩm</th>
                     <th className="px-4 py-3 font-bold">Danh mục</th>
                     <th className="px-4 py-3 font-bold">Giá</th>
-                    <th className="px-4 py-3 font-bold">Tồn kho</th>
                     <th className="px-4 py-3 font-bold">Trạng thái</th>
                     <th className="px-4 py-3 text-right font-bold">Thao tác</th>
                   </tr>
@@ -206,7 +205,6 @@ export default function AdminProductListPage() {
                         </td>
                         <td className="px-4 py-3 text-slate-600">{category || "—"}</td>
                         <td className="px-4 py-3 font-semibold text-slate-800">{currency.format(product.salePrice ?? product.listPrice)}</td>
-                        <td className="px-4 py-3 text-slate-700">{product.stock ?? 0}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${statusClasses[product.status] || statusClasses.INACTIVE}`}>
                             {statusNames[product.status] || product.status}

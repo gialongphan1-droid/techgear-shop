@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { registerCustomer } from "../../services/publicApi.js";
@@ -10,6 +10,7 @@ const fieldClass =
 export default function RegisterPage() {
   const [serverError, setServerError] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -99,23 +100,39 @@ export default function RegisterPage() {
                 />
                 {errors.email && <FieldError>{errors.email.message}</FieldError>}
               </label>
-              <label className="block text-sm font-medium text-slate-700">
-                Mật khẩu
-                <input
-                  type="password"
-                  autoComplete="new-password"
-                  aria-invalid={Boolean(errors.password)}
-                  className={fieldClass}
-                  {...register("password", {
-                    required: "Vui lòng nhập mật khẩu.",
-                    minLength: { value: 8, message: "Mật khẩu tối thiểu 8 ký tự." },
-                    validate: (value) =>
-                      (/[A-Za-z]/.test(value) && /\d/.test(value)) ||
-                      "Mật khẩu cần có ít nhất một chữ cái và một chữ số.",
-                  })}
-                />
+              <div className="text-sm font-medium text-slate-700">
+                <label htmlFor="register-password">Mật khẩu</label>
+                <div className="relative mt-2">
+                  <input
+                    id="register-password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    aria-invalid={Boolean(errors.password)}
+                    className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                    {...register("password", {
+                      required: "Vui lòng nhập mật khẩu.",
+                      minLength: { value: 8, message: "Mật khẩu tối thiểu 8 ký tự." },
+                      validate: (value) =>
+                        (/[A-Za-z]/.test(value) && /\d/.test(value)) ||
+                        "Mật khẩu cần có ít nhất một chữ cái và một chữ số.",
+                    })}
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    aria-pressed={showPassword}
+                    className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={18} aria-hidden="true" />
+                    ) : (
+                      <Eye size={18} aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && <FieldError>{errors.password.message}</FieldError>}
-              </label>
+              </div>
               {serverError && (
                 <p role="alert" className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                   {serverError}

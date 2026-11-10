@@ -219,6 +219,11 @@ export default function AdminOrderDetailPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-slate-900">{item.name}</p>
+                    {item.note && (
+                      <p className="mt-1 whitespace-pre-wrap text-sm italic text-slate-500">
+                        {item.note}
+                      </p>
+                    )}
                     <p className="mt-1 text-sm text-slate-500">Số lượng: {item.quantity}</p>
                     <p className="mt-2 text-sm text-slate-600">Đơn giá: {currency.format(item.unitPrice ?? item.price)}</p>
                   </div>

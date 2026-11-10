@@ -1,4 +1,4 @@
-import { LoaderCircle } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
@@ -15,6 +15,7 @@ export default function AdminLoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [serverError, setServerError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -77,17 +78,33 @@ export default function AdminLoginPage() {
             />
             {errors.email && <span className="mt-1 block text-sm text-red-700">{errors.email.message}</span>}
           </label>
-          <label className="block text-sm font-semibold text-slate-700">
-            Mật khẩu
-            <input
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={Boolean(errors.password)}
-              className={fieldClass}
-              {...register("password", { required: "Vui lòng nhập mật khẩu." })}
-            />
+          <div className="text-sm font-semibold text-slate-700">
+            <label htmlFor="admin-login-password">Mật khẩu</label>
+            <div className="relative mt-2">
+              <input
+                id="admin-login-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                aria-invalid={Boolean(errors.password)}
+                className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                {...register("password", { required: "Vui lòng nhập mật khẩu." })}
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                aria-pressed={showPassword}
+                className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                onClick={() => setShowPassword((visible) => !visible)}
+              >
+                {showPassword ? (
+                  <EyeOff size={18} aria-hidden="true" />
+                ) : (
+                  <Eye size={18} aria-hidden="true" />
+                )}
+              </button>
+            </div>
             {errors.password && <span className="mt-1 block text-sm text-red-700">{errors.password.message}</span>}
-          </label>
+          </div>
           {serverError && (
             <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               {serverError}

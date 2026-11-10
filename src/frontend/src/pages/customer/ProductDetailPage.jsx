@@ -159,10 +159,18 @@ export default function ProductDetailPage() {
     product.stock !== null &&
     product.stock !== "";
   const stockCount = hasStockValue ? Number(product.stock) : null;
+  const hasValidStock =
+    Number.isFinite(stockCount) && stockCount >= 0;
   const isAvailable =
-    product.status === "ACTIVE" &&
-    (!hasStockValue ||
-      (Number.isFinite(stockCount) && stockCount > 0));
+    product.status === "ACTIVE" && hasValidStock && stockCount > 0;
+  const availabilityLabel =
+    product.status !== "ACTIVE"
+      ? "Ngừng kinh doanh"
+      : !hasValidStock
+        ? "Không xác định tồn kho"
+        : isAvailable
+          ? "Còn hàng"
+          : "Hết hàng";
 
   const handleQuantityChange = (nextQuantity) => {
     if (nextQuantity > 10) {
@@ -297,18 +305,14 @@ export default function ProductDetailPage() {
           </div>
           <p
             role="status"
-            className={`mt-4 flex items-center gap-2 text-sm font-semibold ${
-              isAvailable ? "text-emerald-700" : "text-red-700"
+            className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold ${
+              isAvailable
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-red-100 text-red-800"
             }`}
           >
             {isAvailable && <Check size={18} aria-hidden="true" />}
-            {isAvailable
-              ? hasStockValue
-                ? "Còn hàng"
-                : "Đang kinh doanh"
-              : product.status === "ACTIVE"
-                ? "Hết hàng"
-                : "Ngừng kinh doanh"}
+            {availabilityLabel}
           </p>
           {product.warranty && (
             <p className="mt-2 text-sm text-slate-600">
@@ -365,7 +369,7 @@ export default function ProductDetailPage() {
                 <ShoppingCart size={19} aria-hidden="true" />
                 {cartStatus === "loading"
                   ? "Đang đồng bộ giỏ hàng..."
-                  : "Thêm vào giỏ hàng"}
+                  : "Thêm vào giỏ"}
               </button>
               <button
                 type="button"
