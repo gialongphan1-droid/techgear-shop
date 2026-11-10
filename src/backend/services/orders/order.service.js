@@ -399,16 +399,6 @@ function newOrderCode() {
   return `TG-${date}-${suffix}`;
 }
 
-async function generateUniqueOrderCode(session) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const orderCode = newOrderCode();
-    let query = Order.exists({ orderCode });
-    if (session) query = query.session(session);
-    if (!(await query)) return orderCode;
-  }
-  throw serviceError(500, "Không thể sinh mã đơn hàng");
-}
-
 async function createOrderDocument(validated, customerInfo, idempotencyKey, orderCode, trackCode, userId) {
   const trackHash = hashText(trackCode);
   return {
@@ -512,7 +502,7 @@ async function createWithTransaction(cart, payload, customerInfo, userId) {
           });
         }
 
-        const orderCode = await generateUniqueOrderCode(session);
+        const orderCode = newOrderCode();
         const trackCode = crypto.randomUUID();
         const orderDocument = await createOrderDocument(validated, customerInfo, payload.idempotencyKey, orderCode, trackCode, userId);
         const [order] = await Order.create([orderDocument], { session });
@@ -590,24 +580,30 @@ async function createWithoutTransaction(cart, payload, customerInfo, userId) {
   const validated = await validateCartState(cart, null);
   verifyClientTotal(payload, validated);
 
+  const productIds = validated.normalizedItems.map((item) => item.productId);
+  const products = await Product.find({
+    _id: { $in: productIds },
+    status: "ACTIVE",
+  }).select("name categoryId stock").lean();
+  const productMap = new Map(products.map((product) => [product._id.toString(), product]));
+  const categoryIds = [...new Set(products.map((product) => product.categoryId.toString()))];
+  const activeCategories = await Category.find({
+    _id: { $in: categoryIds },
+    isActive: true,
+  }).select("_id").lean();
+  const activeCategoryIds = new Set(activeCategories.map((category) => category._id.toString()));
+
   const decrements = [];
   let createdOrder = null;
   try {
     for (const item of validated.normalizedItems) {
-      const currentProduct = await Product.findOne({
-        _id: item.productId,
-        status: "ACTIVE",
-      }).select("_id name categoryId listPrice salePrice stock status");
+      const currentProduct = productMap.get(item.productId);
       if (!currentProduct) {
         throw serviceError(422, "Có sản phẩm trong giỏ không còn được phép đặt mua", [], {
           items: [{ productId: item.productId, reason: "Sản phẩm không còn được phép đặt mua" }],
         });
       }
-      const activeCategory = await Category.findOne({
-        _id: currentProduct.categoryId,
-        isActive: true,
-      }).select("_id");
-      if (!activeCategory) {
+      if (!activeCategoryIds.has(currentProduct.categoryId.toString())) {
         throw serviceError(422, "Có sản phẩm trong giỏ không còn được phép đặt mua", [], {
           items: [{ productId: item.productId, name: currentProduct.name, reason: "Danh mục không còn hoạt động" }],
         });
@@ -624,11 +620,10 @@ async function createWithoutTransaction(cart, payload, customerInfo, userId) {
         { new: true, runValidators: false },
       ).select("stock");
       if (!updated) {
-        const stockAfterRead = await Product.findById(currentProduct._id).select("stock name");
         throw insufficientStockError(
-          { _id: currentProduct._id, name: stockAfterRead?.name || currentProduct.name },
+          { _id: currentProduct._id, name: currentProduct.name },
           item.quantity,
-          stockAfterRead?.stock,
+          currentProduct.stock,
         );
       }
       decrements.push({
@@ -642,7 +637,7 @@ async function createWithoutTransaction(cart, payload, customerInfo, userId) {
     const finalValidated = await validateCartState(cart, null, { skipStockCheck: true });
     verifyClientTotal(payload, finalValidated);
 
-    const orderCode = await generateUniqueOrderCode(null);
+    const orderCode = newOrderCode();
     const trackCode = crypto.randomUUID();
     const orderDocument = await createOrderDocument(finalValidated, customerInfo, payload.idempotencyKey, orderCode, trackCode, userId);
     createdOrder = await Order.create(orderDocument);
