@@ -7,8 +7,8 @@ import Order from "../../models/Order.js";
 import OrderHistory from "../../models/OrderHistory.js";
 import Product from "../../models/Product.js";
 
-const MAX_CART_ITEMS = 20;
-const MAX_QUANTITY_PER_ITEM = 10;
+const MAX_CART_ITEMS = 10;
+const MAX_QUANTITY_PER_ITEM = 50;
 
 function serviceError(status, message, errors = [], data = {}) {
   const error = new Error(message);
@@ -115,7 +115,7 @@ function normalizeCartItems(cart) {
     const currentQuantity = merged.get(productId)?.quantity || 0;
     const quantity = currentQuantity + item.quantity;
     if (quantity > MAX_QUANTITY_PER_ITEM) {
-      throw serviceError(422, "Số lượng mỗi sản phẩm tối đa là 10", [], {
+      throw serviceError(422, "Số lượng mỗi sản phẩm tối đa là 50", [], {
         items: [{ productId, quantity, maxQuantity: MAX_QUANTITY_PER_ITEM }],
       });
     }

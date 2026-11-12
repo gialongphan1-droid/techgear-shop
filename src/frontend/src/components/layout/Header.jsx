@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   Menu,
   Package,
+  PackageSearch,
   Scale,
   Search,
   ShoppingCart,
@@ -109,6 +110,12 @@ function AccountControl({
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
+            <Link to="/track-order" onClick={onNavigate}>
+              <PackageSearch size={17} aria-hidden="true" />
+              Tra cứu đơn hàng
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link to="/my-orders" onClick={onNavigate}>
               <Package size={17} aria-hidden="true" />
               Đơn hàng của tôi
@@ -134,15 +141,26 @@ function AccountControl({
   if (authStatus === "checking") return null;
 
   return (
-    <Link
-      to="/login"
-      aria-label="Đăng nhập"
-      title="Đăng nhập"
-      className={controlClassName}
-      onClick={onNavigate}
-    >
-      <UserRound size={20} aria-hidden="true" />
-    </Link>
+    <div className="flex items-center gap-2">
+      <Link
+        to="/track-order"
+        aria-label="Tra cứu đơn hàng"
+        title="Tra cứu đơn hàng"
+        className={controlClassName}
+        onClick={onNavigate}
+      >
+        <PackageSearch size={20} aria-hidden="true" />
+      </Link>
+      <Link
+        to="/login"
+        aria-label="Đăng nhập"
+        title="Đăng nhập"
+        className={controlClassName}
+        onClick={onNavigate}
+      >
+        <UserRound size={20} aria-hidden="true" />
+      </Link>
+    </div>
   );
 }
 
@@ -252,7 +270,7 @@ export default function Header() {
           <label className="sr-only" htmlFor="header-search">
             Tìm kiếm sản phẩm
           </label>
-          <div className="flex h-11 max-w-xl items-center rounded-lg border border-slate-200 bg-slate-50/80 px-3 transition focus-within:border-brand-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100">
+          <div className="flex h-11 max-w-xl items-center rounded-xl border border-slate-200 bg-slate-50/80 px-3 transition focus-within:border-brand-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100">
             <Search size={18} className="shrink-0 text-slate-400" />
             <input
               id="header-search"
@@ -290,7 +308,7 @@ export default function Header() {
 
         <Link
           to="/compare"
-          className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+          className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
           aria-label="So sánh sản phẩm"
           aria-describedby="compare-count-description"
           title="So sánh sản phẩm"
@@ -305,7 +323,7 @@ export default function Header() {
         </Link>
         <Link
           to="/cart"
-          className="relative ml-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 lg:ml-0"
+          className="relative ml-auto inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 lg:ml-0"
           aria-label={`Giỏ hàng, ${itemCount} sản phẩm`}
         >
           <ShoppingCart size={19} aria-hidden="true" />
@@ -318,7 +336,7 @@ export default function Header() {
       {menuOpen && (
         <div id="mobile-navigation" className="border-t border-slate-200 bg-white px-4 py-4 lg:hidden">
           <form
-            className="mb-4 flex h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3"
+            className="mb-4 flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 px-3"
             role="search"
             onSubmit={handleMobileSubmit(({ mobileSearch }) => {
               submitSearch(mobileSearch);

@@ -26,6 +26,36 @@ button {
   cursor: pointer;
 }
 
+.password-asterisk-input {
+  background-color: transparent;
+  caret-color: #0f172a;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.password-asterisk-mask {
+  position: absolute;
+  z-index: 10;
+  inset: 0 3rem 0 1rem;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: #0f172a;
+  pointer-events: none;
+  white-space: pre;
+}
+
+.quantity-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.quantity-input::-webkit-inner-spin-button,
+.quantity-input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 @keyframes hero-copy-in {
   from {
     opacity: 0;

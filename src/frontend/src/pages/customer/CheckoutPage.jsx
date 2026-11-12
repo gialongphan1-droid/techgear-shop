@@ -10,7 +10,7 @@ import {
 import { clearCart, setCartData } from "../../store/cartSlice.js";
 
 const inputClass =
-  "mt-2 h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+  "mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", {
@@ -29,7 +29,6 @@ export default function CheckoutPage() {
   const { items, subtotal } = useSelector((state) => state.cart);
   const idempotencyKey = useRef(null);
   const orderSubmitted = useRef(false);
-  const [submitError, setSubmitError] = useState("");
   const [stockError, setStockError] = useState("");
   const {
     register,
@@ -60,7 +59,6 @@ export default function CheckoutPage() {
   }
 
   const onSubmit = async (values) => {
-    setSubmitError("");
     idempotencyKey.current ||= window.crypto.randomUUID();
 
     try {
@@ -100,22 +98,22 @@ export default function CheckoutPage() {
         (fieldErrors.some((item) => item.field === "clientTotal") ||
           serverMessage.toLowerCase().includes("clienttotal"))
       ) {
-        setSubmitError(
-          "Giá sản phẩm đã thay đổi. Giỏ hàng đã được làm mới; vui lòng kiểm tra lại tổng tiền trước khi đặt hàng.",
+        showToast(
+          "Giá sản phẩm vừa thay đổi. Vui lòng kiểm tra lại giỏ hàng.",
         );
       } else if (
         error.response?.status === 422 &&
         (serverMessage.toLowerCase().includes("tồn kho") ||
           error.response?.data?.data?.items?.length)
       ) {
-        setSubmitError(
-          "Tồn kho đã thay đổi hoặc không đủ số lượng. Giỏ hàng đã được làm mới; vui lòng kiểm tra lại.",
+        showToast(
+          "Tồn kho vừa thay đổi hoặc không đủ số lượng. Vui lòng kiểm tra lại giỏ hàng.",
         );
       } else if (
         error.response?.status === 422 &&
         serverMessage.toLowerCase().includes("giỏ hàng trống")
       ) {
-        setSubmitError("Giỏ hàng đã trống. Vui lòng chọn sản phẩm trước khi đặt hàng.");
+        showToast("Giỏ hàng đã trống. Vui lòng chọn sản phẩm trước khi đặt hàng.");
       } else {
         showToast(serverMessage || "Chưa thể xác nhận đơn hàng. Vui lòng thử lại.");
       }
@@ -132,7 +130,7 @@ export default function CheckoutPage() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">
+        <p className="text-sm font-medium text-brand-700">
           Hoàn tất đơn hàng
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Thông tin nhận hàng</h1>
@@ -143,7 +141,7 @@ export default function CheckoutPage() {
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <form
-          className="space-y-5 border border-slate-200 bg-white p-5 sm:p-8"
+          className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-8"
           onSubmit={handleSubmit(onSubmit)}
           noValidate
         >
@@ -190,7 +188,7 @@ export default function CheckoutPage() {
               autoComplete="street-address"
               rows={3}
               aria-invalid={Boolean(errors.address)}
-              className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
               {...register("address", {
                 required: "Vui lòng nhập địa chỉ nhận hàng.",
                 minLength: { value: 5, message: "Địa chỉ cần ít nhất 5 ký tự." },
@@ -219,22 +217,17 @@ export default function CheckoutPage() {
           <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
             TechGear Shop chưa hỗ trợ thanh toán trực tuyến. Cửa hàng sẽ liên hệ để xác nhận đơn và thông báo cách thu tiền, phí vận chuyển (nếu có).
           </p>
-          {submitError && (
-            <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {submitError}
-            </p>
-          )}
           <div className="flex flex-wrap gap-3">
             <Link
               to="/cart"
-              className="inline-flex h-12 items-center rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-12 items-center rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
             >
               Quay lại giỏ hàng
             </Link>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700 disabled:cursor-wait disabled:opacity-60"
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
             >
               {isSubmitting ? (
                 <>
@@ -248,7 +241,7 @@ export default function CheckoutPage() {
           </div>
         </form>
 
-        <aside className="border border-slate-200 bg-white p-5 sm:p-6 lg:sticky lg:top-24">
+        <aside className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 lg:sticky lg:top-24">
           <h2 className="text-lg font-semibold tracking-tight text-ink">Đơn hàng của bạn</h2>
           <ul className="mt-4 divide-y divide-slate-100">
             {items.map((item) => (
@@ -298,14 +291,14 @@ export default function CheckoutPage() {
             <div className="flex items-start justify-between gap-4">
               <h2
                 id="checkout-stock-error-title"
-                className="text-xl font-black text-slate-950"
+                className="text-xl font-semibold text-ink"
               >
                 Không đủ hàng trong kho
               </h2>
               <button
                 type="button"
                 aria-label="Đóng thông báo"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2"
                 onClick={() => setStockError("")}
               >
                 <X size={19} aria-hidden="true" />

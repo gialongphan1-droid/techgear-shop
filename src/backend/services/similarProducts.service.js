@@ -1,9 +1,13 @@
 import { client, collectionName, objectIdToUuid } from "../config/qdrant.js";
-import "../models/Category.js";
+import Category from "../models/Category.js";
 import Product from "../models/Product.js";
+import {
+  buildActiveProductFilter,
+  normalizeProductStock,
+} from "./public/productSearch.helpers.js";
 import myCache from "../utils/cache.js";
 
-const SIMILAR_PRODUCTS_CACHE_TTL_SECONDS = 5 * 60;
+const SIMILAR_PRODUCTS_CACHE_TTL_SECONDS = 5;
 
 export async function getSimilarProducts(productId, limit = 5) {
   const cacheKey = `similar:${productId}:${limit}`;
@@ -47,22 +51,26 @@ export async function getSimilarProducts(productId, limit = 5) {
     return result;
   }
 
-  const products = await Product.find({
-    _id: { $in: [...scoreMap.keys()] },
-    status: "ACTIVE",
-  })
-    .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
+  const activeCategories = await Category.find({ isActive: true }).select("_id").lean();
+  const activeCategoryIds = activeCategories.map((category) => category._id);
+  const products = await Product.find(
+    buildActiveProductFilter([...scoreMap.keys()], activeCategoryIds),
+  )
+    .select("name slug categoryId brand listPrice salePrice stock status images specs warranty seo createdAt")
     .populate("categoryId", "name slug")
     .lean();
 
   const items = products
-    .map((product) => ({
-      ...product,
-      images: Array.isArray(product.images)
-        ? product.images.map(({ url, isPrimary }) => ({ url, isPrimary }))
-        : [],
-      similarityScore: scoreMap.get(String(product._id)),
-    }))
+    .map((product) => {
+      return {
+        ...product,
+        stock: normalizeProductStock(product.stock),
+        images: Array.isArray(product.images)
+          ? product.images.map(({ url, isPrimary }) => ({ url, isPrimary }))
+          : [],
+        similarityScore: scoreMap.get(String(product._id)),
+      };
+    })
     .sort((left, right) => right.similarityScore - left.similarityScore);
   const result = { items, total: items.length };
   myCache.set(cacheKey, result, SIMILAR_PRODUCTS_CACHE_TTL_SECONDS);

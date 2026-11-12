@@ -43,6 +43,7 @@ export default function ProductDetailPage() {
   const [status, setStatus] = useState("loading");
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [quantityInput, setQuantityInput] = useState("1");
   const [similarProducts, setSimilarProducts] = useState([]);
   const [similarStatus, setSimilarStatus] = useState("idle");
 
@@ -56,6 +57,7 @@ export default function ProductDetailPage() {
     let active = true;
     setStatus("loading");
     setQuantity(1);
+    setQuantityInput("1");
     getStorefrontProductBySlug(slug)
       .then((response) => {
         if (!active) return;
@@ -105,7 +107,7 @@ export default function ProductDetailPage() {
         </Helmet>
         <div className="mx-auto max-w-7xl animate-pulse px-4 py-12 sm:px-6 lg:px-8" role="status">
           <div className="grid gap-8 md:grid-cols-2">
-            <div className="aspect-square rounded-3xl bg-slate-200" />
+            <div className="aspect-square rounded-2xl bg-slate-200" />
             <div className="space-y-5">
               <div className="h-8 rounded bg-slate-200" />
               <div className="h-20 rounded bg-slate-200" />
@@ -126,7 +128,7 @@ export default function ProductDetailPage() {
           <link rel="canonical" href={`${window.location.origin}/products/${slug}`} />
         </Helmet>
         <section className="mx-auto max-w-3xl px-4 py-20 text-center">
-          <h1 className="text-2xl font-black text-slate-950">Không tìm thấy sản phẩm</h1>
+          <h1 className="text-2xl font-semibold text-ink">Không tìm thấy sản phẩm</h1>
           <p className="mt-2 text-slate-600">Sản phẩm có thể đã bị gỡ khỏi cửa hàng.</p>
           <Link to="/products" className="mt-5 inline-flex rounded-xl bg-slate-950 px-5 py-3 font-bold text-white hover:bg-orange-600">
             Xem sản phẩm khác
@@ -145,7 +147,7 @@ export default function ProductDetailPage() {
           <link rel="canonical" href={`${window.location.origin}/products/${slug}`} />
         </Helmet>
         <section role="alert" className="mx-auto max-w-3xl px-4 py-20 text-center">
-          <h1 className="text-2xl font-black text-slate-950">Không thể tải sản phẩm</h1>
+          <h1 className="text-2xl font-semibold text-ink">Không thể tải sản phẩm</h1>
           <p className="mt-2 text-slate-600">Vui lòng tải lại trang để thử lại.</p>
         </section>
       </>
@@ -172,22 +174,41 @@ export default function ProductDetailPage() {
           ? "Còn hàng"
           : "Hết hàng";
 
+  const applyQuantity = (nextQuantity) => {
+    setQuantity(nextQuantity);
+    setQuantityInput(String(nextQuantity));
+  };
+
+  const commitQuantityInput = () => {
+    const parsedQuantity = Number(quantityInput);
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
+      applyQuantity(1);
+      return;
+    }
+
+    applyQuantity(Math.trunc(parsedQuantity));
+  };
+
   const handleQuantityChange = (nextQuantity) => {
-    if (nextQuantity > 10) {
-      showToast("Mỗi sản phẩm chỉ có thể mua tối đa 10 món.");
+    if (nextQuantity > 50) {
+      showToast("Mỗi sản phẩm chỉ có thể mua tối đa 50 món.");
       return;
     }
     if (hasStockValue && nextQuantity > stockCount) {
       showToast(`Chỉ còn ${stockCount} sản phẩm trong kho.`);
       return;
     }
-    setQuantity(Math.max(1, nextQuantity));
+    applyQuantity(Math.max(1, nextQuantity));
   };
 
   const handlePurchase = async (buyNow = false) => {
     if (!isAvailable || cartStatus === "loading") return;
-    if (hasStockValue && quantity > stockCount) {
+    if (quantity > stockCount) {
       showToast(`Chỉ còn ${stockCount} sản phẩm trong kho.`);
+      return;
+    }
+    if (quantity > 50) {
+      showToast("Số lượng mỗi sản phẩm tối đa là 50.");
       return;
     }
 
@@ -265,7 +286,7 @@ export default function ProductDetailPage() {
 
       <div className="grid gap-9 lg:grid-cols-2 lg:gap-14">
         <div>
-          <div className="aspect-square overflow-hidden rounded-3xl bg-slate-100">
+          <div className="aspect-square overflow-hidden rounded-2xl bg-slate-100">
             <img src={image} alt={product.name} className="h-full w-full object-cover" />
           </div>
           {images.length > 1 && (
@@ -276,7 +297,7 @@ export default function ProductDetailPage() {
                   type="button"
                   aria-label={`Xem ảnh ${index + 1}`}
                   aria-pressed={index === activeImage}
-                  className={`h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 ${index === activeImage ? "border-orange-500" : "border-transparent"}`}
+                  className={`h-20 w-20 shrink-0 overflow-hidden rounded-lg border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${index === activeImage ? "border-orange-500" : "border-transparent"}`}
                   onClick={() => setActiveImage(index)}
                 >
                   <img src={item.url} alt="" className="h-full w-full object-cover" />
@@ -287,10 +308,10 @@ export default function ProductDetailPage() {
         </div>
 
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-600">
+          <p className="text-sm font-semibold text-orange-700">
             {product.brand}
           </p>
-          <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-2 text-3xl font-bold leading-tight text-ink sm:text-4xl">
             {product.name}
           </h1>
           <div className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -321,38 +342,62 @@ export default function ProductDetailPage() {
           )}
           <div className="mt-7 space-y-3">
             <div className="flex items-center gap-4">
-              <span
-                id="product-quantity-label"
-                className="text-sm font-semibold text-slate-700"
-              >
-                Số lượng
-              </span>
+              <div className="flex flex-col">
+                <span
+                  id="product-quantity-label"
+                  className="text-sm font-semibold text-slate-700"
+                >
+                  Số lượng
+                </span>
+                {hasValidStock && (
+                  <span className="text-xs text-slate-500">
+                    Còn lại: {stockCount} sản phẩm
+                  </span>
+                )}
+              </div>
               <div
                 role="group"
                 aria-labelledby="product-quantity-label"
-                className="inline-flex h-10 items-center rounded-lg border border-slate-200"
+                className="inline-flex h-11 items-center rounded-lg border border-slate-200"
               >
                 <button
                   type="button"
                   aria-label="Giảm số lượng"
                   disabled={!isAvailable || cartStatus === "loading" || quantity <= 1}
-                  className="grid h-9 w-9 place-items-center rounded-l-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="grid h-11 w-11 place-items-center rounded-l-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={() => handleQuantityChange(quantity - 1)}
                 >
                   <Minus size={16} aria-hidden="true" />
                 </button>
-                <span
-                  aria-live="polite"
-                  aria-atomic="true"
-                  className="min-w-10 text-center text-sm font-bold text-slate-900"
-                >
-                  {quantity}
-                </span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  aria-label="Số lượng sản phẩm"
+                  className="quantity-input h-9 w-12 border-0 bg-transparent p-0 text-center text-sm font-bold text-slate-900 outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                  value={quantityInput}
+                  disabled={!isAvailable || cartStatus === "loading"}
+                  min={1}
+                  max={hasValidStock ? Math.min(stockCount, 50) : 50}
+                  step={1}
+                  onChange={(event) => setQuantityInput(event.currentTarget.value)}
+                  onBlur={commitQuantityInput}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      event.currentTarget.blur();
+                    }
+                  }}
+                />
                 <button
                   type="button"
                   aria-label="Tăng số lượng"
-                  disabled={!isAvailable || cartStatus === "loading" || quantity >= 10}
-                  className="grid h-9 w-9 place-items-center rounded-r-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={
+                    !isAvailable ||
+                    cartStatus === "loading" ||
+                    quantity >= 50 ||
+                    quantity >= stockCount
+                  }
+                  className="grid h-11 w-11 place-items-center rounded-r-lg text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={() => handleQuantityChange(quantity + 1)}
                 >
                   <Plus size={16} aria-hidden="true" />
@@ -363,7 +408,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 disabled={!isAvailable || cartStatus === "loading"}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:flex-1"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-brand-600 bg-white px-5 font-bold text-brand-700 transition hover:border-brand-700 hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:flex-1"
                 onClick={() => handlePurchase()}
               >
                 <ShoppingCart size={19} aria-hidden="true" />
@@ -374,7 +419,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 disabled={!isAvailable || cartStatus === "loading"}
-                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-5 font-bold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:flex-1"
+                className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-orange-600 px-5 font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 sm:flex-1"
                 onClick={() => handlePurchase(true)}
               >
                 Mua ngay
@@ -395,7 +440,7 @@ export default function ProductDetailPage() {
           </div>
 
           <section className="mt-10">
-            <h2 className="text-xl font-black text-slate-950">Thông số kỹ thuật</h2>
+            <h2 className="text-xl font-semibold text-ink">Thông số kỹ thuật</h2>
             {product.specs?.length ? (
               <dl className="mt-4 divide-y divide-slate-200 rounded-2xl border border-slate-200">
                 {product.specs.map((spec) => (
@@ -423,7 +468,7 @@ export default function ProductDetailPage() {
         >
           <h2
             id="similar-products-heading"
-            className="text-2xl font-black text-slate-950"
+            className="text-2xl font-semibold text-ink"
           >
             Sản phẩm tương tự
           </h2>
@@ -431,7 +476,7 @@ export default function ProductDetailPage() {
             {Array.from({ length: 4 }, (_, index) => (
               <div
                 key={index}
-                className="h-72 animate-pulse rounded-xl bg-slate-200"
+                className="h-72 animate-pulse rounded-2xl bg-slate-200"
                 aria-hidden="true"
               />
             ))}
@@ -446,7 +491,7 @@ export default function ProductDetailPage() {
         >
           <h2
             id="similar-products-heading"
-            className="text-2xl font-black text-slate-950"
+            className="text-2xl font-semibold text-ink"
           >
             Sản phẩm tương tự
           </h2>

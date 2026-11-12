@@ -1,10 +1,14 @@
-import "../models/Category.js";
+import Category from "../models/Category.js";
 import Product from "../models/Product.js";
 import { client, collectionName } from "../config/qdrant.js";
 import { embedText } from "./embedding.service.js";
+import {
+  buildActiveProductFilter,
+  normalizeProductStock,
+} from "./public/productSearch.helpers.js";
 import myCache from "../utils/cache.js";
 
-const SEMANTIC_CACHE_TTL_SECONDS = 5 * 60;
+const SEMANTIC_CACHE_TTL_SECONDS = 5;
 const DEFAULT_SIMILARITY_THRESHOLD = 0.82;
 const SIMILARITY_THRESHOLD = Number(
   process.env.SEMANTIC_SEARCH_THRESHOLD ?? DEFAULT_SIMILARITY_THRESHOLD,
@@ -42,11 +46,15 @@ export async function semanticSearchProducts(query, limit = 10) {
     return emptyResult;
   }
 
-  const products = await Product.find({
-    _id: { $in: scoredIds.map((point) => point.productId) },
-    status: "ACTIVE",
-  })
-    .select("name slug categoryId brand listPrice salePrice status images specs warranty seo createdAt")
+  const activeCategories = await Category.find({ isActive: true }).select("_id").lean();
+  const activeCategoryIds = activeCategories.map((category) => category._id);
+  const products = await Product.find(
+    buildActiveProductFilter(
+      scoredIds.map((point) => point.productId),
+      activeCategoryIds,
+    ),
+  )
+    .select("name slug categoryId brand listPrice salePrice stock status images specs warranty seo createdAt")
     .populate("categoryId", "name slug")
     .lean();
 
@@ -56,6 +64,7 @@ export async function semanticSearchProducts(query, limit = 10) {
   const items = products
     .map((product) => ({
       ...product,
+      stock: normalizeProductStock(product.stock),
       images: Array.isArray(product.images)
         ? product.images.map(({ url, isPrimary }) => ({ url, isPrimary }))
         : [],

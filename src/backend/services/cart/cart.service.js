@@ -5,7 +5,7 @@ import Category from "../../models/Category.js";
 import Product from "../../models/Product.js";
 
 const CART_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const MAX_QUANTITY = 10;
+const MAX_QUANTITY = 50;
 const MAX_ITEMS = 20;
 
 function serviceError(status, message, errors = []) {
@@ -138,7 +138,7 @@ export async function addCartItem(req, payload) {
 
   const currentItem = cart.items.find((item) => item.productId.toString() === product._id.toString());
   const nextQuantity = (currentItem?.quantity || 0) + payload.quantity;
-  if (!Number.isInteger(nextQuantity) || nextQuantity > MAX_QUANTITY) throw serviceError(422, "Số lượng mỗi sản phẩm tối đa là 10");
+  if (!Number.isInteger(nextQuantity) || nextQuantity > MAX_QUANTITY) throw serviceError(422, "Số lượng mỗi sản phẩm tối đa là 50");
   validateCartStockQuantity(nextQuantity, product.stock);
   if (!currentItem && cart.items.length >= MAX_ITEMS) throw serviceError(422, "Giỏ hàng tối đa 20 dòng sản phẩm");
 

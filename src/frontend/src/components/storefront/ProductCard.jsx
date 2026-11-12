@@ -28,6 +28,11 @@ export default function ProductCard({ product }) {
     product.images?.find((item) => item.isPrimary)?.url ||
     product.images?.[0]?.url;
   const similarityScore = Number(product.similarityScore);
+  const stockCount = Number(product.stock);
+  const isAvailable =
+    product.status === "ACTIVE" &&
+    Number.isFinite(stockCount) &&
+    stockCount > 0;
 
   const handleCompare = () => {
     if (isCompared) return;
@@ -49,17 +54,22 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <article className="group overflow-hidden rounded-xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift">
+    <article className="group overflow-hidden rounded-2xl border border-slate-200/90 bg-white transition duration-300 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift">
       <Link
         to={`/products/${product.slug}`}
         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
       >
-        <ProductArtwork key={image || product._id || product.slug} image={image} name={product.name} />
+        <ProductArtwork
+          key={image || product._id || product.slug}
+          image={image}
+          name={product.name}
+          isAvailable={isAvailable}
+        />
         <div className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-700">
+          <p className="text-sm font-medium text-brand-700">
             {product.brand}
           </p>
-          <h3 className="mt-2 min-h-12 line-clamp-2 font-semibold leading-6 text-slate-900">
+          <h3 className="mt-2 min-h-12 line-clamp-2 font-semibold leading-6 text-ink">
             {product.name}
           </h3>
           {Number.isFinite(similarityScore) && (
@@ -89,7 +99,7 @@ export default function ProductCard({ product }) {
               : `Thêm ${product.name} vào so sánh`
           }
           title={compareLimitReached && !isCompared ? "Chỉ so sánh tối đa 3 sản phẩm" : undefined}
-          className="inline-flex min-h-9 items-center gap-2 rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 transition duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={handleCompare}
         >
           <Scale size={15} />
@@ -100,11 +110,19 @@ export default function ProductCard({ product }) {
   );
 }
 
-function ProductArtwork({ image, name }) {
+function ProductArtwork({ image, name, isAvailable }) {
   const [failed, setFailed] = useState(!image);
 
   return (
-    <div className="aspect-[4/3] overflow-hidden bg-slate-50">
+    <div className="relative aspect-[4/3] overflow-hidden bg-slate-50">
+      <span
+        role="status"
+        className={`pointer-events-none absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-semibold text-white shadow-md ${
+          isAvailable ? "bg-emerald-600" : "bg-red-600"
+        }`}
+      >
+        {isAvailable ? "Còn hàng" : "Hết hàng"}
+      </span>
       {failed ? (
         <div
           className="flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-100 text-slate-400"

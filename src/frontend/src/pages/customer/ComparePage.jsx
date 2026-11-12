@@ -180,7 +180,11 @@ export default function ComparePage() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={product.stock <= 0 || product.status !== "ACTIVE"}
+                        disabled={
+                          !product.stock ||
+                          product.stock <= 0 ||
+                          product.status !== "ACTIVE"
+                        }
                         className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-orange-600 px-3 text-xs font-bold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                         onClick={() => addToCart(product)}
                       >

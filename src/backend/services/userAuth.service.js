@@ -7,6 +7,14 @@ import { sendVerificationEmail } from "../utils/mailer.js";
 const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const dummyPasswordHash = bcrypt.hashSync("dummy-password-123", 12);
 
+export function isPasswordStrong(password) {
+  return typeof password === "string"
+    && password.length >= 8
+    && password.length <= 128
+    && /[A-Za-z]/.test(password)
+    && /\d/.test(password);
+}
+
 function serviceError(status, message) {
   const error = new Error(message);
   error.status = status;
@@ -100,4 +108,29 @@ export async function authenticateUser(email, password) {
     token,
     user: { id: user._id.toString(), fullName: user.fullName, email: user.email },
   };
+}
+
+export async function changePassword(userId, oldPassword, newPassword) {
+  if (typeof oldPassword !== "string" || typeof newPassword !== "string") {
+    throw serviceError(400, "Mật khẩu không hợp lệ");
+  }
+
+  const user = await User.findById(userId).select("+password");
+  if (!user) throw serviceError(401, "Phiên đăng nhập không hợp lệ");
+
+  if (!(await bcrypt.compare(oldPassword, user.password))) {
+    throw serviceError(400, "Mật khẩu hiện tại không chính xác");
+  }
+  if (!isPasswordStrong(newPassword)) {
+    throw serviceError(400, "Mật khẩu mới phải từ 8 đến 128 ký tự, có ít nhất một chữ cái và một chữ số");
+  }
+
+  const password = await bcrypt.hash(newPassword, 12);
+  const result = await User.updateOne(
+    { _id: user._id, password: user.password },
+    { $set: { password } },
+  );
+  if (result.matchedCount !== 1) {
+    throw serviceError(409, "Mật khẩu đã được thay đổi. Vui lòng thử lại");
+  }
 }

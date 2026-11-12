@@ -52,6 +52,7 @@ export default function CartPage() {
   const dispatch = useDispatch();
   const [busyProductIds, setBusyProductIds] = useState([]);
   const [notes, setNotes] = useState({});
+  const [expandedNotes, setExpandedNotes] = useState({});
   const [noteStatuses, setNoteStatuses] = useState({});
 
   const markProductBusy = (productId, isBusy) => {
@@ -174,11 +175,11 @@ export default function CartPage() {
   if (status === "error" && !items.length) {
     return (
       <section role="alert" className="mx-auto max-w-3xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-black text-slate-950">Không thể tải giỏ hàng</h1>
+        <h1 className="text-2xl font-semibold text-ink">Không thể tải giỏ hàng</h1>
         <p className="mt-2 text-slate-600">{error}</p>
         <button
           type="button"
-          className="mt-5 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white"
+          className="mt-5 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
           onClick={async () => {
             dispatch(setCartLoading());
             try {
@@ -205,13 +206,13 @@ export default function CartPage() {
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-orange-50 text-orange-600">
           <ShoppingBag size={30} />
         </span>
-        <h1 className="mt-6 text-3xl font-black text-slate-950">Giỏ hàng đang trống</h1>
+        <h1 className="mt-6 text-3xl font-semibold text-ink">Giỏ hàng đang trống</h1>
         <p className="mt-3 text-slate-600">
           Hãy khám phá các sản phẩm công nghệ và chọn món đồ phù hợp với bạn.
         </p>
         <Link
           to="/products"
-          className="mt-7 inline-flex h-11 items-center rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700"
+          className="mt-7 inline-flex h-11 items-center rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
         >
           Tiếp tục mua sắm
         </Link>
@@ -224,12 +225,12 @@ export default function CartPage() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-9 sm:px-6 lg:px-8">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-600">
+        <p className="text-sm font-semibold text-orange-600">
           TechGear Shop
         </p>
-        <h1 className="mt-2 text-3xl font-black text-slate-950">Giỏ hàng</h1>
+        <h1 className="mt-2 text-3xl font-semibold text-ink">Giỏ hàng</h1>
         <p className="mt-2 text-sm text-slate-600">
-          {items.length} sản phẩm · Tối đa 10 món cho mỗi sản phẩm
+          {items.length} sản phẩm · Tối đa 50 món cho mỗi sản phẩm
         </p>
       </div>
 
@@ -245,17 +246,21 @@ export default function CartPage() {
       )}
 
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-3">
+        <div className="space-y-5">
           {items.map((item) => {
             const busy = busyProductIds.includes(item.productId);
+            const noteValue = notes[item.productId] ?? item.note ?? "";
+            const noteIsExpanded = Boolean(expandedNotes[item.productId]);
+            const hasNote = noteValue.length > 0;
+            const noteStatus = noteStatuses[item.productId];
             return (
               <article
                 key={item.productId}
-                className="grid grid-cols-[76px_minmax(0,1fr)] gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[96px_minmax(0,1fr)_auto] sm:items-center"
+                className="grid grid-cols-[64px_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-[96px_minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:p-4"
               >
                 <Link
                   to={item.slug ? `/products/${item.slug}` : "/products"}
-                  className="aspect-square overflow-hidden rounded-xl bg-slate-100"
+                  className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-24 sm:w-24"
                   aria-label={`Xem ${item.name || "sản phẩm"}`}
                 >
                   {item.image && (
@@ -263,12 +268,12 @@ export default function CartPage() {
                   )}
                 </Link>
                 <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wide text-orange-600">
+                  <p className="text-sm font-medium text-orange-700">
                     {item.brand}
                   </p>
                   <Link
                     to={item.slug ? `/products/${item.slug}` : "/products"}
-                    className="mt-1 block font-bold leading-6 text-slate-900 hover:text-orange-700"
+                    className="mt-1 block break-words font-bold leading-6 text-ink hover:text-orange-700 [overflow-wrap:anywhere]"
                   >
                     {item.name || "Sản phẩm không còn tồn tại"}
                   </Link>
@@ -282,68 +287,98 @@ export default function CartPage() {
                       {item.invalidReason || "Sản phẩm không thể đặt mua."}
                     </p>
                   )}
-                  <label className="mt-3 block">
-                    <span className="mb-1 block text-sm font-semibold text-slate-700">
-                      Ghi chú cho sản phẩm
-                    </span>
-                    <textarea
-                      rows={2}
-                      maxLength={500}
-                      value={notes[item.productId] ?? item.note ?? ""}
-                      disabled={busy}
-                      aria-describedby={`cart-note-help-${item.productId} cart-note-status-${item.productId}`}
-                      className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:bg-slate-100 disabled:text-slate-500"
-                      placeholder="Nhập ghi chú (không bắt buộc)"
-                      onChange={(event) => {
-                        const value = event.target.value.slice(0, 500);
-                        setNotes((current) => ({
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      aria-expanded={noteIsExpanded}
+                      aria-controls={`cart-note-${item.productId}`}
+                      className="inline-flex min-h-11 items-center gap-1 rounded-lg text-left text-sm font-semibold text-orange-700 hover:text-orange-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                      onClick={() =>
+                        setExpandedNotes((current) => ({
                           ...current,
-                          [item.productId]: value,
-                        }));
-                        setNoteStatuses((current) => ({
-                          ...current,
-                          [item.productId]: "",
-                        }));
-                      }}
-                      onBlur={(event) =>
-                        saveItemNote(item, event.currentTarget.value)
+                          [item.productId]: !current[item.productId],
+                        }))
                       }
-                    />
-                    <span
-                      id={`cart-note-help-${item.productId}`}
-                      className="mt-1 block text-xs text-slate-500"
                     >
-                      {(notes[item.productId] ?? item.note ?? "").length}/500 ký tự
-                    </span>
+                      {hasNote ? "Chỉnh sửa ghi chú" : "Thêm ghi chú (không bắt buộc)"}
+                    </button>
+                    {hasNote && (
+                      <span className="ml-2 text-xs font-medium text-slate-500">
+                        Đã có ghi chú
+                      </span>
+                    )}
+                    <div
+                      id={`cart-note-${item.productId}`}
+                      className={noteIsExpanded ? "mt-2" : "hidden"}
+                    >
+                      <label className="block">
+                        <span className="mb-1 block text-sm font-semibold text-slate-700">
+                          Ghi chú cho sản phẩm
+                        </span>
+                        <textarea
+                          rows={2}
+                          maxLength={500}
+                          value={noteValue}
+                          disabled={busy}
+                          aria-describedby={`cart-note-help-${item.productId} cart-note-status-${item.productId}`}
+                          className="min-h-[5.5rem] w-full resize-y rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:bg-slate-100 disabled:text-slate-500"
+                          placeholder="Nhập ghi chú (không bắt buộc)"
+                          onChange={(event) => {
+                            const value = event.target.value.slice(0, 500);
+                            setNotes((current) => ({
+                              ...current,
+                              [item.productId]: value,
+                            }));
+                            setNoteStatuses((current) => ({
+                              ...current,
+                              [item.productId]: "",
+                            }));
+                          }}
+                          onBlur={(event) =>
+                            saveItemNote(item, event.currentTarget.value)
+                          }
+                        />
+                        <span
+                          id={`cart-note-help-${item.productId}`}
+                          className="mt-1 block text-xs text-slate-500"
+                        >
+                          {noteValue.length}/500 ký tự
+                        </span>
+                      </label>
+                    </div>
                     <span
                       id={`cart-note-status-${item.productId}`}
                       aria-live="polite"
                       className={`mt-1 block text-xs ${
-                        noteStatuses[item.productId] === "error"
-                          ? "text-red-700"
-                          : "text-slate-500"
+                        noteStatus === "error" ? "text-red-700" : "text-slate-500"
                       }`}
                     >
-                      {noteStatuses[item.productId] === "saving"
+                      {noteStatus === "saving"
                         ? "Đang lưu ghi chú..."
-                        : noteStatuses[item.productId] === "saved"
+                        : noteStatus === "saved"
                           ? "Đã lưu ghi chú"
-                          : noteStatuses[item.productId] === "error"
+                          : noteStatus === "error"
                             ? "Chưa lưu được ghi chú"
                             : ""}
                     </span>
-                  </label>
-                  <div className="mt-3 flex items-center justify-between gap-3 sm:hidden">
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between gap-2 sm:hidden">
                     <QuantityControl
                       item={item}
                       disabled={busy || !item.valid}
                       onChange={(quantity) => updateQuantity(item, quantity)}
                     />
+                    <div className="min-w-0 flex-1 text-right">
+                      <p className="text-xs text-slate-500">Thành tiền</p>
+                      <p className="truncate text-sm font-black text-slate-950">
+                        {formatPrice(item.subtotal)}
+                      </p>
+                    </div>
                     <button
                       type="button"
                       disabled={busy}
                       aria-label={`Xóa ${item.name || "sản phẩm"} khỏi giỏ hàng`}
-                      className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-50"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-red-700 transition hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
                       onClick={() => removeItem(item)}
                     >
                       {busy ? <LoaderCircle size={18} className="animate-spin" /> : <Trash2 size={18} />}
@@ -357,14 +392,16 @@ export default function CartPage() {
                     onChange={(quantity) => updateQuantity(item, quantity)}
                   />
                   <div className="w-32 text-right">
+                    <p className="text-xs text-slate-500">Thành tiền</p>
                     <p className="font-black text-slate-950">{formatPrice(item.subtotal)}</p>
                     <button
                       type="button"
                       disabled={busy}
-                      className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-red-700 disabled:opacity-50"
+                      aria-label={`Xóa ${item.name || "sản phẩm"} khỏi giỏ hàng`}
+                      className="mt-1 inline-flex h-11 min-w-11 items-center justify-center gap-1 whitespace-nowrap rounded-lg px-2 text-xs font-semibold text-red-700 hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 disabled:opacity-50"
                       onClick={() => removeItem(item)}
                     >
-                      {busy ? <LoaderCircle size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      {busy ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} />}
                       Xóa
                     </button>
                   </div>
@@ -375,17 +412,17 @@ export default function CartPage() {
         </div>
 
         <aside className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-          <h2 className="text-lg font-black text-slate-950">Tóm tắt đơn hàng</h2>
+          <h2 className="text-lg font-semibold text-ink">Tóm tắt đơn hàng</h2>
           <div className="mt-5 flex items-center justify-between text-sm text-slate-600">
-            <span>Tạm tính ({itemCount} món)</span>
+            <span>Thành tiền sản phẩm ({itemCount} món)</span>
             <span className="font-semibold text-slate-900">{formatPrice(subtotal)}</span>
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-4">
-            <span className="font-bold text-slate-900">Tạm tính</span>
+            <span className="font-bold text-slate-900">Tổng tạm tính</span>
             <span className="text-xl font-black text-orange-700">{formatPrice(subtotal)}</span>
           </div>
           <p className="mt-3 text-xs leading-5 text-slate-500">
-            Giá chỉ mang tính tham khảo. Tổng tiền chính thức sẽ được Backend xác nhận khi đặt hàng.
+            Giá hiển thị chỉ mang tính tham khảo. Tổng tiền cuối cùng sẽ được xác nhận ở bước đặt hàng.
           </p>
           {hasInvalidItems ? (
             <button
@@ -398,14 +435,14 @@ export default function CartPage() {
           ) : (
             <Link
               to="/checkout"
-              className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700"
+              className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
             >
               Tiến hành đặt hàng
             </Link>
           )}
           <Link
             to="/products"
-            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-xl bg-orange-600 px-5 text-sm font-semibold text-white transition hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
           >
             Tiếp tục mua sắm
           </Link>
@@ -418,14 +455,14 @@ export default function CartPage() {
 function QuantityControl({ item, disabled, onChange }) {
   return (
     <div
-      className="inline-flex h-9 items-center rounded-lg border border-slate-200"
+      className="inline-flex h-11 shrink-0 items-center rounded-lg border border-slate-200"
       aria-label={`Số lượng ${item.quantity}`}
     >
       <button
         type="button"
         aria-label="Giảm số lượng"
         disabled={disabled || item.quantity <= 1}
-        className="grid h-8 w-8 place-items-center rounded-l-lg text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+        className="grid h-11 w-11 place-items-center rounded-l-lg text-slate-600 hover:bg-slate-100 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:opacity-40"
         onClick={() => onChange(item.quantity - 1)}
       >
         <Minus size={14} />
@@ -436,8 +473,8 @@ function QuantityControl({ item, disabled, onChange }) {
       <button
         type="button"
         aria-label="Tăng số lượng"
-        disabled={disabled || item.quantity >= 10}
-        className="grid h-8 w-8 place-items-center rounded-r-lg text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+        disabled={disabled || item.quantity >= 50}
+        className="grid h-11 w-11 place-items-center rounded-r-lg text-slate-600 hover:bg-slate-100 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 disabled:opacity-40"
         onClick={() => onChange(item.quantity + 1)}
       >
         <Plus size={14} />

@@ -57,7 +57,7 @@ export default function HomePage() {
           <link rel="canonical" href={`${window.location.origin}/`} />
         </Helmet>
         <div className="mx-auto max-w-7xl animate-pulse space-y-8 px-4 py-8 sm:px-6 lg:px-8" role="status">
-          <div className="h-64 rounded-3xl bg-slate-200 sm:h-96" />
+          <div className="h-64 rounded-2xl bg-slate-200 sm:h-96" />
           <span className="sr-only">Đang tải dữ liệu cửa hàng...</span>
         </div>
       </>
@@ -76,7 +76,7 @@ export default function HomePage() {
           <link rel="canonical" href={`${window.location.origin}/`} />
         </Helmet>
         <section className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-black text-slate-950">
+          <h1 className="text-2xl font-semibold text-ink">
             Chưa thể tải dữ liệu cửa hàng
           </h1>
           <p className="mt-2 text-slate-600">Vui lòng tải lại trang để thử lại.</p>
@@ -230,7 +230,7 @@ function BannerCarousel({ banners }) {
           aria-roledescription="slide"
           aria-label={`Slide ${activeBanner + 1} of ${banners.length}`}
         >
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-300 sm:text-sm">
+          <p className="text-sm font-semibold text-brand-300">
             Công nghệ cho nhịp sống hiện đại
           </p>
           <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-[1.08] tracking-tight text-white sm:mt-5 sm:text-4xl lg:text-6xl">
@@ -255,19 +255,25 @@ function BannerCarousel({ banners }) {
                   type="button"
                   aria-label={`Hiển thị banner ${index + 1}`}
                   aria-current={activeBanner === index ? "true" : undefined}
-                  className={`h-2.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink ${
-                    activeBanner === index ? "w-7 bg-brand-400" : "w-2.5 bg-white/50 hover:bg-white/80"
-                  }`}
+                  className="group grid h-11 w-11 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                   onClick={() => scrollTo(index)}
-                />
+                >
+                  <span
+                    className={`h-2.5 rounded-full transition-all group-hover:bg-white/80 ${
+                      activeBanner === index
+                        ? "w-7 bg-brand-400"
+                        : "w-2.5 bg-white/50"
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
               aria-label="Banner trước"
-              className="grid h-10 w-10 place-items-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+              className="grid h-11 w-11 place-items-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
               onClick={() => scrollTo((activeBanner - 1 + snapCount) % snapCount)}
             >
               <ArrowLeft size={18} aria-hidden="true" />
@@ -275,7 +281,7 @@ function BannerCarousel({ banners }) {
             <button
               type="button"
               aria-label="Banner tiếp theo"
-              className="grid h-10 w-10 place-items-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+              className="grid h-11 w-11 place-items-center rounded-lg border border-white/30 text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
               onClick={() => scrollTo((activeBanner + 1) % snapCount)}
             >
               <ArrowRight size={18} aria-hidden="true" />
@@ -320,7 +326,7 @@ function ProductSection({ eyebrow, title, products }) {
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
+            <p className="text-sm font-medium text-brand-700">
               {eyebrow}
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">

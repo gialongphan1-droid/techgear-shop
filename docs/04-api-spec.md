@@ -39,6 +39,7 @@ Bảo mật: Yêu cầu Origin & CSRF Token cho các thao tác POST/PUT/DELETE. 
 - `GET /api/auth/verify-email?token=...`: Xác thực email.
 - `POST /api/auth/login`: Đăng nhập bằng `{ email, password }`, trả cookie HTTP-only và CSRF token.
 - `GET /api/auth/me`: Kiểm tra phiên khách hàng, trả về thông tin user và CSRF token.
+- `PUT /api/auth/change-password`: Yêu cầu đăng nhập, Origin và CSRF hợp lệ; nhận `{ oldPassword, newPassword }`. Mật khẩu mới phải dài 8-128 ký tự, có ít nhất một chữ cái và một chữ số. Trả `200` khi thành công, `400` nếu mật khẩu hiện tại sai hoặc mật khẩu mới không đạt yêu cầu, `409` nếu mật khẩu được thay đổi đồng thời.
 - `POST /api/auth/logout`: Xóa cookie phiên và CSRF; yêu cầu Origin và CSRF hợp lệ.
 
 ## 8.6. API Quản lý Sản phẩm (Admin)

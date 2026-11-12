@@ -2,6 +2,7 @@ import { validationResult } from "express-validator";
 import { createCsrfToken } from "../middleware/csrf.middleware.js";
 import {
   authenticateUser,
+  changePassword as changeUserPassword,
   getUserSession,
   registerUser,
   verifyUserEmail,
@@ -109,6 +110,23 @@ export async function login(req, res, next) {
       success: true,
       message: "Đăng nhập thành công",
       data: { user: result.user, csrfToken },
+      errors: [],
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function changePassword(req, res, next) {
+  const validation = validationFailure(res, req, 400);
+  if (validation) return validation;
+
+  try {
+    await changeUserPassword(req.user.id, req.body.oldPassword, req.body.newPassword);
+    return res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công",
+      data: {},
       errors: [],
     });
   } catch (error) {

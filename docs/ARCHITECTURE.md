@@ -1,15 +1,43 @@
 # Kiến trúc TechGear Shop
 
-Tài liệu mô tả các luồng request chính dựa trên cấu trúc route → controller → service → model/tích hợp hiện tại.
+Tài liệu mô tả kiến trúc đang được triển khai trong mã nguồn: frontend SPA, backend API phân lớp, các kho dữ liệu và tích hợp ngoài. Backend hiện là một ứng dụng monolith, không phải hệ thống microservices.
 
 ## Thành phần
 
-- **Frontend:** React + Vite, gửi request JSON đến Backend.
-- **Backend:** Express; routes gắn middleware auth, CSRF, rate limit và validation trước controller.
-- **MongoDB:** dữ liệu người dùng, danh mục, sản phẩm, giỏ hàng, đơn hàng và log nghiệp vụ; truy cập bằng Mongoose.
-- **Qdrant:** lưu vector sản phẩm và payload phục vụ tìm kiếm ngữ nghĩa.
-- **Embedding:** tạo vector từ nội dung truy vấn hoặc thông tin sản phẩm.
-- **SMTP / Cloudinary:** gửi email xác thực và quản lý ảnh qua các tích hợp backend.
+- **Frontend:** React + Vite SPA. React Router tổ chức route khách hàng và admin; Redux Toolkit lưu state dùng chung của giỏ hàng, so sánh và phiên đăng nhập. Các trang gọi API qua service wrappers và Axios client.
+- **Backend:** một Express server cung cấp các nhóm API công khai, khách hàng, xác thực và admin. Middleware áp dụng bảo mật, xác thực, CSRF, rate limit và validation trước controller.
+- **MongoDB:** nguồn dữ liệu chính cho người dùng, danh mục, sản phẩm, giỏ hàng, đơn hàng và log nghiệp vụ; truy cập qua Mongoose.
+- **Qdrant:** lưu vector sản phẩm và payload để truy xuất ứng viên tìm kiếm ngữ nghĩa/tương tự. MongoDB được dùng để tải và xác minh dữ liệu sản phẩm trả về.
+- **Embedding:** backend tạo vector từ truy vấn hoặc thông tin sản phẩm bằng mô hình embedding.
+- **SMTP / Cloudinary:** backend gửi email xác thực và quản lý ảnh.
+
+## Luồng request và phân lớp
+
+```mermaid
+flowchart LR
+    Browser[Trình duyệt] --> SPA[React SPA]
+    SPA --> Client[Axios client]
+    Client --> Routes[Express routes]
+    Routes --> Middleware[Middleware: auth, CSRF, rate limit, validation]
+    Middleware --> Controller[Controllers]
+    Controller --> Service[Services]
+    Service --> Mongo[(MongoDB qua Mongoose)]
+    Service --> Cache[NodeCache]
+    Service --> Qdrant[(Qdrant)]
+    Service --> External[Tích hợp SMTP / Cloudinary]
+```
+
+Frontend khởi tạo route và Redux store tại [main.jsx](../src/frontend/src/main.jsx), [App.jsx](../src/frontend/src/App.jsx) và [store/index.js](../src/frontend/src/store/index.js). Axios được cấu hình tập trung trong [axiosClient.js](../src/frontend/src/api/axiosClient.js), bao gồm gửi cookie, CSRF header cho request ghi và xử lý một số phản hồi xác thực/rate limit.
+
+Backend khởi tạo middleware và đăng ký route trong [server.js](../src/backend/server.js). Request thường đi theo luồng:
+
+1. Route chọn middleware xác thực, CSRF, giới hạn tần suất và validation phù hợp với endpoint.
+2. Controller kiểm tra kết quả validation, gọi service và định dạng response HTTP.
+3. Service xử lý nghiệp vụ, truy vấn trực tiếp Mongoose models hoặc gọi tích hợp ngoài.
+
+Hiện tại chưa có lớp repository riêng; các service đảm nhiệm cả nghiệp vụ và truy cập model. Response API theo dạng `success`, `message`, `data`, `errors`.
+
+Các nhóm route frontend được cấu hình trong [App.jsx](../src/frontend/src/App.jsx); Redux slices hiện được ghép trong [store/index.js](../src/frontend/src/store/index.js). Backend đăng ký các nhóm route `/api/admin`, `/api/auth` và các route public/customer trong [server.js](../src/backend/server.js).
 
 ## Đăng ký và xác thực email
 
@@ -61,7 +89,7 @@ sequenceDiagram
     participant Logs as InventoryLog + OrderHistory
 
     Customer->>FE: Xác nhận thanh toán
-    FE->>Route: POST JSON + user_token + CSRF
+    FE->>Route: POST JSON + cookie phiên + CSRF header
     Route->>Auth: Xác thực user, Origin, CSRF và payload
     Auth-->>Route: Cho phép request
     Route->>Controller: createOrder()
@@ -113,13 +141,14 @@ sequenceDiagram
         Service->>Service: Lọc theo SEMANTIC_SEARCH_THRESHOLD
         Service->>Product: Tải sản phẩm ACTIVE theo productId
         Product-->>Service: Dữ liệu sản phẩm từ MongoDB
-        Service->>Cache: Lưu kết quả TTL 5 phút
+        Service->>Cache: Lưu kết quả TTL 5 giây
     end
     Service-->>Controller: Danh sách sản phẩm và score
     Controller-->>FE: Response JSON chuẩn
 ```
 
 Qdrant cung cấp ứng viên theo độ tương đồng; MongoDB là nguồn dữ liệu sản phẩm trả về và lọc trạng thái `ACTIVE`. Nếu không có điểm đạt threshold, service trả danh sách rỗng.
+Cache sản phẩm dùng NodeCache với TTL mặc định 5 giây; Semantic Search và Similar Products cũng cấu hình TTL 5 giây.
 
 ## Đồng bộ sản phẩm với Qdrant
 

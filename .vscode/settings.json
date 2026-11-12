@@ -1,17 +1,14 @@
 {
   "python.terminal.useEnvFile": true,
-  "chat.tools.global.autoApprove": true,
-  "chat.autopilot.enabled": true,
-  "chat.tools.terminal.enableAutoApprove": true,
+  "chat.tools.global.autoApprove": false, 
+  "chat.autopilot.enabled": false,
+  "chat.tools.terminal.enableAutoApprove": false,
   "chat.tools.edits.autoApprove": {
-    "**": true
+    "**": false
   },
   "github.copilot.chat.preferredModel": "Claude Opus 4.5 (copilot)",
-  "chat.useCustomAgentHooks": true,
+  "chat.useCustomAgentHooks": false, 
   "chat.agentFilesLocations": [
     ".github/agents"
-  ],
-  "chat.hookFilesLocations": {
-    ".github/hooks/supervisor.json": true
-  }
+  ]
 }

@@ -65,6 +65,18 @@ export const validateUserLogin = [
   passwordValidator,
 ];
 
+export const validateChangePassword = [
+  validateObjectBody(["oldPassword", "newPassword"]),
+  body("oldPassword")
+    .exists().withMessage("Mật khẩu hiện tại là bắt buộc")
+    .bail()
+    .isString().withMessage("Mật khẩu hiện tại phải là chuỗi"),
+  body("newPassword")
+    .exists().withMessage("Mật khẩu mới là bắt buộc")
+    .bail()
+    .isString().withMessage("Mật khẩu mới phải là chuỗi"),
+];
+
 export const validateEmailVerification = [
   query("token")
     .exists().withMessage("Token xác thực là bắt buộc")

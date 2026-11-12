@@ -1,9 +1,10 @@
-import { Eye, EyeOff, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../../components/ui/Button.jsx";
+import PasswordInput from "../../components/ui/PasswordInput.jsx";
 import { loginAdmin } from "../../services/adminApi.js";
 import { setAdminSession } from "../../store/adminSessionSlice.js";
 
@@ -17,6 +18,7 @@ export default function AdminLoginPage() {
   const [serverError, setServerError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
@@ -80,29 +82,17 @@ export default function AdminLoginPage() {
           </label>
           <div className="text-sm font-semibold text-slate-700">
             <label htmlFor="admin-login-password">Mật khẩu</label>
-            <div className="relative mt-2">
-              <input
-                id="admin-login-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                aria-invalid={Boolean(errors.password)}
-                className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-                {...register("password", { required: "Vui lòng nhập mật khẩu." })}
-              />
-              <button
-                type="button"
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                aria-pressed={showPassword}
-                className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                onClick={() => setShowPassword((visible) => !visible)}
-              >
-                {showPassword ? (
-                  <EyeOff size={18} aria-hidden="true" />
-                ) : (
-                  <Eye size={18} aria-hidden="true" />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              id="admin-login-password"
+              autoComplete="current-password"
+              className="h-12 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+              control={control}
+              isInvalid={Boolean(errors.password)}
+              register={register}
+              rules={{ required: "Vui lòng nhập mật khẩu." }}
+              showPassword={showPassword}
+              onToggleVisibility={() => setShowPassword((visible) => !visible)}
+            />
             {errors.password && <span className="mt-1 block text-sm text-red-700">{errors.password.message}</span>}
           </div>
           {serverError && (
