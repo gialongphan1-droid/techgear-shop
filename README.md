@@ -62,7 +62,7 @@ Copy-Item .env.example .env
 npm install
 ```
 
-Điền `MONGODB_URI`, `JWT_SECRET` và thông tin tích hợp cần dùng trong `src/backend/.env`. Để bật xác thực email, cấu hình SMTP. Semantic search cần Qdrant và model embedding được cấu hình trong môi trường.
+Điền `MONGODB_URI`, `JWT_SECRET` và thông tin tích hợp cần dùng trong `src/backend/.env`. Để bật xác thực email, cấu hình SMTP; tính năng semantic search cần Qdrant và model embedding được cấu hình trong môi trường. Các giá trị mẫu nằm trong `src/backend/.env.example`.
 
 ```powershell
 npm run dev
@@ -85,7 +85,7 @@ npm run dev
 
 ### Lệnh backend hữu ích
 
-- `npm run seed:admin` — tạo tài khoản Admin ban đầu theo cấu hình môi trường.
+- `npm run seed:admin` — tạo hoặc cập nhật tài khoản Admin bootstrap theo giá trị trong `src/backend/utils/seedAdmin.js` (không lấy thông tin đăng nhập từ `.env`). Chỉ chạy với database development/test; script sẽ ghi dữ liệu và đặt lại mật khẩu của tài khoản bootstrap.
 - `npm run index:products` — lập chỉ mục sản phẩm vào Qdrant.
 - `npm test` — chạy các test Node.js hiện có.
 
@@ -107,7 +107,7 @@ Các skill cốt lõi hiện có:
 Xem [hướng dẫn setup skill chi tiết](docs/DEVELOPMENT_SETUP.md), bao gồm các reference dùng chung và lưu ý bảo mật khi cài.
 
 ## ⚠️ Checklist trước khi deploy production
-- [ ] Đặt `RATE_LIMIT_ENABLED=true` trong `.env` (hiện đang `false` để dev test)
+- [ ] Xác nhận `RATE_LIMIT_ENABLED=true` và điều chỉnh `RATE_LIMIT_MAX` phù hợp (file `.env.example` đã bật rate limit)
 - [ ] Đặt `COOKIE_SECURE=true` (production dùng HTTPS)
 - [ ] Đổi `JWT_SECRET` sang secret mới, mạnh hơn (≥ 32 ký tự)
 - [ ] Cập nhật `CLIENT_ORIGINS` thành domain thật (VD: `https://techgear.shop`)
